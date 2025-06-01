@@ -265,8 +265,33 @@ app.post("/webhook", (req, res) => {
     stream.on("finish", () => {
       const url = `https://${req.headers.host}/${filename}`;
       res.json({
-        fulfillmentText: `✅ Diagnóstico completado.\n\nPuedes descargar tu reporte en PDF aquí:\n📎 ${url}`
-      });
+  fulfillmentMessages: [
+    {
+      text: {
+        text: [
+          "✅ Diagnóstico completado. Puedes descargar tu reporte aquí:"
+        ]
+      }
+    },
+    {
+      payload: {
+        richContent: [
+          [
+            {
+              type: "button",
+              icon: {
+                type: "description",
+                color: "#007bff"
+              },
+              text: "📎 Descargar Reporte PDF",
+              link: url
+            }
+          ]
+        ]
+      }
+    }
+  ]
+});
     });
     
     
