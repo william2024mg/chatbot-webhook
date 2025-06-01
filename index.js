@@ -10,6 +10,14 @@ const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
+// Carpeta pública para archivos PDF
+app.use("/pdfs", express.static(path.join(__dirname, "pdfs")));
+
+// Asegura que exista la carpeta
+if (!fs.existsSync("pdfs")) {
+  fs.mkdirSync("pdfs");
+}
+
 // Ruta de prueba
 app.get("/", (req, res) => {
   res.send("✅ Servidor de Chatbot activo");
@@ -213,7 +221,55 @@ app.post("/webhook", (req, res) => {
       ]
     });
 // resumen_final_resultados
-  } else if (intentName === "resumen_final_resultados") {
+  
+
+} else if (intentName === "resumen_final_resultados") {
+    const params = body.queryResult.parameters;
+
+    const nombre = params["nombre_completo"] || "Estudiante";
+    const edad = params["edad"] || "No registrado";
+    const celular = params["celular_padres"] || "No registrado";
+
+    const pDepresion = params["puntaje_depresion"];
+    const pAnsiedad = params["puntaje_ansiedad"];
+    const pEstres = params["puntaje_estres"];
+    const pAutoestima = params["puntaje_autoestima"];
+    const pHabilidades = params["puntaje_habilidades"];
+    const pSueno = params["puntaje_sueno"];
+    const pBullying = params["puntaje_bullying"];
+
+    // Crear PDF
+    const doc = new PDFDocument();
+    const filename = `pdfs/reporte_${Date.now()}.pdf`;
+    const filepath = path.join(__dirname, filename);
+    const stream = fs.createWriteStream(filepath);
+    doc.pipe(stream);
+
+    doc.fontSize(16).text("📋 Reporte de Evaluación de Salud Mental", { align: "center" });
+    doc.moveDown();
+    doc.fontSize(12).text(`👤 Nombre del estudiante: ${nombre}`);
+    doc.text(`🎂 Edad: ${edad}`);
+    doc.text(`📞 Celular de los padres: ${celular}`);
+    doc.moveDown();
+    doc.text(`1️⃣ Depresión: ${pDepresion} puntos`);
+    doc.text(`2️⃣ Ansiedad: ${pAnsiedad} puntos`);
+    doc.text(`3️⃣ Estrés Académico: ${pEstres} puntos`);
+    doc.text(`4️⃣ Autoestima: ${pAutoestima} puntos`);
+    doc.text(`5️⃣ Habilidades Sociales: ${pHabilidades} puntos`);
+    doc.text(`6️⃣ Trastornos del Sueño: ${pSueno} puntos`);
+    doc.text(`7️⃣ Acoso Escolar: ${pBullying} puntos`);
+    doc.moveDown();
+    doc.text("🧠 Este reporte puede ser validado por un especialista.");
+    doc.end();
+
+    stream.on("finish", () => {
+      const url = `https://${req.headers.host}/${filename}`;
+      res.json({
+        fulfillmentText: `✅ Diagnóstico completado.\n\nPuedes descargar tu reporte en PDF aquí:\n📎 ${url}`
+      });
+    });
+    
+    
     const pDepresion = body.queryResult.parameters["puntaje_depresion"];
     const pAnsiedad = body.queryResult.parameters["puntaje_ansiedad"];
     const pEstres = body.queryResult.parameters["puntaje_estres"];
