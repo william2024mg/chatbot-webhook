@@ -209,7 +209,39 @@ app.post("/webhook", (req, res) => {
         }
       ]
     });
+// resumen_final_resultados
+  } else if (intentName === "resumen_final_resultados") {
+    const pDepresion = body.queryResult.parameters["puntaje_depresion"];
+    const pAnsiedad = body.queryResult.parameters["puntaje_ansiedad"];
+    const pEstres = body.queryResult.parameters["puntaje_estres"];
+    const pAutoestima = body.queryResult.parameters["puntaje_autoestima"];
+    const pHabilidades = body.queryResult.parameters["puntaje_habilidades"];
+    const pSueno = body.queryResult.parameters["puntaje_sueno"];
+    const pBullying = body.queryResult.parameters["puntaje_bullying"];
 
+    const resumen = `
+📊 *Resumen Final de Salud Mental del Estudiante*:
+
+1️⃣ *Depresión:* ${pDepresion} puntos  
+2️⃣ *Ansiedad:* ${pAnsiedad} puntos  
+3️⃣ *Estrés Académico:* ${pEstres} puntos  
+4️⃣ *Autoestima:* ${pAutoestima} puntos  
+5️⃣ *Habilidades Sociales:* ${pHabilidades} puntos  
+6️⃣ *Trastornos del Sueño:* ${pSueno} puntos  
+7️⃣ *Acoso Escolar:* ${pBullying} puntos  
+
+🔍 Este resumen puede ser revisado por el psicólogo o especialista encargado. Gracias por completar el cuestionario. 🧠✨
+`;
+
+    res.json({
+      fulfillmentText: resumen,
+      outputContexts: [
+        {
+          name: `${body.session}/contexts/contexto_finalizado`,
+          lifespanCount: 1
+        }
+      ]
+    });
   // fallback / respuesta general
   } else {
     res.json({
