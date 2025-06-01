@@ -1,4 +1,7 @@
 / index.js
+const fs = require("fs");
+const PDFDocument = require("pdfkit");
+const path = require("path");
 const express = require("express");
 const bodyParser = require("body-parser");
 
