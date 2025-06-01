@@ -1,24 +1,25 @@
-// index.js
+/ index.js
 const express = require("express");
 const bodyParser = require("body-parser");
 
 const app = express();
-const port = process.env.PORT || 3000; // Usamos el puerto asignado por Render
+const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
-// Ruta para probar si el servidor está activo
+// Ruta de prueba
 app.get("/", (req, res) => {
   res.send("✅ Servidor de Chatbot activo");
 });
 
-// Ruta del webhook para Dialogflow
+// Webhook principal
 app.post("/webhook", (req, res) => {
   const body = req.body;
   console.log("📥 Webhook recibido:", JSON.stringify(body, null, 2));
 
   const intentName = body.queryResult.intent.displayName;
 
+  // resultado_depresion
   if (intentName === "resultado_depresion") {
     const puntaje = body.queryResult.parameters["puntaje_depresion"];
     let interpretacion = "";
@@ -42,20 +43,182 @@ app.post("/webhook", (req, res) => {
       outputContexts: [
         {
           name: `${body.session}/contexts/contexto_ansiedad_inicio`,
-          lifespanCount: 1,
-          parameters: {}
+          lifespanCount: 1
         }
       ]
     });
+
+  // resultado_ansiedad
+  } else if (intentName === "resultado_ansiedad") {
+    const puntaje = body.queryResult.parameters["puntaje_ansiedad"];
+    let interpretacion = "";
+
+    if (puntaje <= 4) {
+      interpretacion = "ansiedad mínima.";
+    } else if (puntaje <= 9) {
+      interpretacion = "ansiedad leve.";
+    } else if (puntaje <= 14) {
+      interpretacion = "ansiedad moderada.";
+    } else {
+      interpretacion = "ansiedad severa.";
+    }
+
+    const respuesta = `😟 Tu puntaje en el test de ansiedad fue *${puntaje}*. Esto indica *${interpretacion}*`;
+
+    res.json({
+      fulfillmentText: respuesta,
+      outputContexts: [
+        {
+          name: `${body.session}/contexts/contexto_estres_inicio`,
+          lifespanCount: 1
+        }
+      ]
+    });
+
+  // resultado_estres
+  } else if (intentName === "resultado_estres") {
+    const puntaje = body.queryResult.parameters["puntaje_estres"];
+    let interpretacion = "";
+
+    if (puntaje <= 5) {
+      interpretacion = "muy bajo estrés académico.";
+    } else if (puntaje <= 10) {
+      interpretacion = "bajo estrés académico.";
+    } else if (puntaje <= 15) {
+      interpretacion = "estrés académico moderado.";
+    } else {
+      interpretacion = "alto nivel de estrés académico.";
+    }
+
+    const respuesta = `📚 Tu puntaje en estrés académico fue *${puntaje}*. Esto indica *${interpretacion}*`;
+
+    res.json({
+      fulfillmentText: respuesta,
+      outputContexts: [
+        {
+          name: `${body.session}/contexts/contexto_autoestima_inicio`,
+          lifespanCount: 1
+        }
+      ]
+    });
+
+  // resultado_autoestima
+  } else if (intentName === "resultado_autoestima") {
+    const puntaje = body.queryResult.parameters["puntaje_autoestima"];
+    let interpretacion = "";
+
+    if (puntaje <= 5) {
+      interpretacion = "muy baja autoestima.";
+    } else if (puntaje <= 10) {
+      interpretacion = "baja autoestima.";
+    } else if (puntaje <= 15) {
+      interpretacion = "autoestima moderada.";
+    } else {
+      interpretacion = "alta autoestima.";
+    }
+
+    const respuesta = `💪 Tu puntaje en autoestima fue *${puntaje}*. Esto indica *${interpretacion}*`;
+
+    res.json({
+      fulfillmentText: respuesta,
+      outputContexts: [
+        {
+          name: `${body.session}/contexts/contexto_habilidades_inicio`,
+          lifespanCount: 1
+        }
+      ]
+    });
+
+  // resultado_habilidades
+  } else if (intentName === "resultado_habilidades") {
+    const puntaje = body.queryResult.parameters["puntaje_habilidades"];
+    let interpretacion = "";
+
+    if (puntaje <= 5) {
+      interpretacion = "dificultades severas en habilidades sociales.";
+    } else if (puntaje <= 10) {
+      interpretacion = "habilidades sociales bajas.";
+    } else if (puntaje <= 15) {
+      interpretacion = "habilidades sociales adecuadas.";
+    } else {
+      interpretacion = "excelentes habilidades sociales.";
+    }
+
+    const respuesta = `🤝 Tu puntaje en habilidades sociales fue *${puntaje}*. Esto indica *${interpretacion}*`;
+
+    res.json({
+      fulfillmentText: respuesta,
+      outputContexts: [
+        {
+          name: `${body.session}/contexts/contexto_sueno_inicio`,
+          lifespanCount: 1
+        }
+      ]
+    });
+
+  // resultado_sueno
+  } else if (intentName === "resultado_sueno") {
+    const puntaje = body.queryResult.parameters["puntaje_sueno"];
+    let interpretacion = "";
+
+    if (puntaje <= 5) {
+      interpretacion = "excelente calidad del sueño.";
+    } else if (puntaje <= 10) {
+      interpretacion = "calidad del sueño aceptable.";
+    } else if (puntaje <= 15) {
+      interpretacion = "trastornos leves del sueño.";
+    } else {
+      interpretacion = "trastornos severos del sueño.";
+    }
+
+    const respuesta = `😴 Tu puntaje en trastornos del sueño fue *${puntaje}*. Esto indica *${interpretacion}*`;
+
+    res.json({
+      fulfillmentText: respuesta,
+      outputContexts: [
+        {
+          name: `${body.session}/contexts/contexto_bullying_inicio`,
+          lifespanCount: 1
+        }
+      ]
+    });
+
+  // resultado_bullying
+  } else if (intentName === "resultado_bullying") {
+    const puntaje = body.queryResult.parameters["puntaje_bullying"];
+    let interpretacion = "";
+
+    if (puntaje <= 5) {
+      interpretacion = "no presenta indicios de acoso escolar.";
+    } else if (puntaje <= 10) {
+      interpretacion = "posible presencia leve de bullying.";
+    } else if (puntaje <= 15) {
+      interpretacion = "probables síntomas de acoso escolar.";
+    } else {
+      interpretacion = "alto riesgo de acoso escolar.";
+    }
+
+    const respuesta = `🚨 Tu puntaje en bullying fue *${puntaje}*. Esto indica *${interpretacion}*`;
+
+    res.json({
+      fulfillmentText: respuesta,
+      outputContexts: [
+        {
+          name: `${body.session}/contexts/contexto_resumen_inicio`,
+          lifespanCount: 1
+        }
+      ]
+    });
+
+  // fallback / respuesta general
   } else {
-    // Respuesta por defecto para otros intents
     res.json({
       fulfillmentText: "Respuesta desde webhook de William 💬"
     });
   }
 });
 
-// Iniciar el servidor
+// Iniciar servidor
 app.listen(port, () => {
   console.log(`🚀 Servidor escuchando en http://localhost:${port}`);
 });
