@@ -4,8 +4,10 @@ const PDFDocument = require("pdfkit");
 const path = require("path");
 const express = require("express");
 const bodyParser = require("body-parser");
+const path = require('path');
 
 const app = express();
+app.use('/pdfs', express.static(path.join(__dirname, 'pdfs')));
 const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
