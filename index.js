@@ -222,78 +222,77 @@ app.post("/webhook", (req, res) => {
     });
 
   // resumen_final_resultados
-  } else if (intentName === "resumen_final_resultados") {
-    const params = body.queryResult.parameters;
+  } else if (intent === 'resumen_final_resultados') {
+    const nombre = parameters.nombre || 'Estudiante';
+    const grado = parameters.grado || 'No especificado';
+    const seccion = parameters.seccion || 'No especificado';
+    const puntajeDepresion = parameters.puntaje_depresion || 0;
+    const puntajeAnsiedad = parameters.puntaje_ansiedad || 0;
+    const puntajeEstres = parameters.puntaje_estres || 0;
+    const puntajeAutoestima = parameters.puntaje_autoestima || 0;
+    const puntajeHabilidades = parameters.puntaje_habilidades || 0;
+    const puntajeSueno = parameters.puntaje_sueno || 0;
+    const puntajeBullying = parameters.puntaje_bullying || 0;
 
-    const nombre = params["nombre_completo"] || "Estudiante";
-    const edad = params["edad"] || "No registrado";
-    const celular = params["celular_padres"] || "No registrado";
-
-    const pDepresion = params["puntaje_depresion"];
-    const pAnsiedad = params["puntaje_ansiedad"];
-    const pEstres = params["puntaje_estres"];
-    const pAutoestima = params["puntaje_autoestima"];
-    const pHabilidades = params["puntaje_habilidades"];
-    const pSueno = params["puntaje_sueno"];
-    const pBullying = params["puntaje_bullying"];
-
-    // Crear PDF
     const doc = new PDFDocument();
-    const filename = `reporte_${Date.now()}.pdf`;
-    const filepath = path.join(__dirname, "pdfs", filename);
-    const stream = fs.createWriteStream(filepath);
-    doc.pipe(stream);
+    const filePath = `pdfs/${nombre.replace(/ /g, '_')}_resultado.pdf`;
+    const writeStream = fs.createWriteStream(filePath);
+    doc.pipe(writeStream);
 
-    doc.fontSize(16).text("📋 Reporte de Evaluación de Salud Mental", { align: "center" });
+    doc.fontSize(18).text('Informe de Evaluación de Salud Mental', { align: 'center' });
     doc.moveDown();
-    doc.fontSize(12).text(`👤 Nombre del estudiante: ${nombre}`);
-    doc.text(`🎂 Edad: ${edad}`);
-    doc.text(`📞 Celular de los padres: ${celular}`);
+    doc.fontSize(12).text(`Nombre: ${nombre}`);
+    doc.text(`Grado: ${grado}`);
+    doc.text(`Sección: ${seccion}`);
     doc.moveDown();
-    doc.text(`1️⃣ Depresión: ${pDepresion} puntos`);
-    doc.text(`2️⃣ Ansiedad: ${pAnsiedad} puntos`);
-    doc.text(`3️⃣ Estrés Académico: ${pEstres} puntos`);
-    doc.text(`4️⃣ Autoestima: ${pAutoestima} puntos`);
-    doc.text(`5️⃣ Habilidades Sociales: ${pHabilidades} puntos`);
-    doc.text(`6️⃣ Trastornos del Sueño: ${pSueno} puntos`);
-    doc.text(`7️⃣ Acoso Escolar: ${pBullying} puntos`);
-    doc.moveDown();
-    doc.text("🧠 Este reporte puede ser validado por un especialista.");
+    doc.text(`Puntaje Depresión: ${puntajeDepresion}`);
+    doc.text(`Puntaje Ansiedad: ${puntajeAnsiedad}`);
+    doc.text(`Puntaje Estrés Académico: ${puntajeEstres}`);
+    doc.text(`Puntaje Autoestima: ${puntajeAutoestima}`);
+    doc.text(`Puntaje Habilidades Sociales: ${puntajeHabilidades}`);
+    doc.text(`Puntaje Trastornos del Sueño: ${puntajeSueno}`);
+    doc.text(`Puntaje Acoso Escolar: ${puntajeBullying}`);
     doc.end();
 
-    stream.on("finish", () => {
-      const url = `https://${req.headers.host}/pdfs/${filename}`;
+    writeStream.on('finish', () => {
+      const pdfUrl = `https://TUDOMINIO.com/pdfs/${encodeURIComponent(nombre.replace(/ /g, '_'))}_resultado.pdf`;
+
       res.json({
         fulfillmentMessages: [
           {
             text: {
               text: [
-                "✅ Diagnóstico completado. Puedes descargar tu reporte aquí:"
-              ]
-            }
-          },
-          {
-            payload: {
-              richContent: [
-                [
-                  {
-                    type: "button",
-                    icon: {
-                      type: "description",
-                      color: "#007bff"
-                    },
-                    text: "📎 Descargar Reporte PDF",
-                    link: url
-                  }
-                ]
+                `Gracias por completar la evaluación, ${nombre}.`,
+                `Aquí tienes un resumen de tus resultados:`,
+                `• Depresión: ${puntajeDepresion}`,
+                `• Ansiedad: ${puntajeAnsiedad}`,
+                `• Estrés Académico: ${puntajeEstres}`,
+                `• Autoestima: ${puntajeAutoestima}`,
+                `• Habilidades Sociales: ${puntajeHabilidades}`,
+                `• Trastornos del Sueño: ${puntajeSueno}`,
+                `• Acoso Escolar: ${puntajeBullying}`,
+                ``,
+                `Puedes descargar tu informe completo aquí: ${pdfUrl}`
               ]
             }
           }
         ]
       });
     });
+
+    writeStream.on('error', (err) => {
+      console.error('Error al generar PDF:', err);
+      res.json({
+        fulfillmentMessages: [
+          {
+            text: {
+              text: ['Ocurrió un error al generar tu informe. Intenta nuevamente más tarde.']
+            }
+          }
+        ]
+      });
+    });
   }
-});
 
 app.listen(port, () => {
   console.log(`🚀 Servidor funcionando en http://localhost:${port}`);
