@@ -299,3 +299,14 @@ app.post("/webhook", (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor funcionando en http://localhost:${port}`);
 });
+  
+console.log("Datos recibidos:");
+console.log("Nombre:", nombre_completo);
+console.log("Edad:", edad);
+console.log("Puntaje Depresión:", puntaje_depresion);
+console.log("Puntaje Ansiedad:", puntaje_ansiedad);
+console.log("Puntaje Estrés:", puntaje_estres);
+console.log("Puntaje Autoestima:", puntaje_autoestima);
+console.log("Puntaje Habilidades Sociales:", puntaje_habilidades);
+console.log("Puntaje Sueño:", puntaje_sueno);
+console.log("Puntaje Acoso Escolar:", puntaje_acoso);
