@@ -34,7 +34,7 @@ app.post("/webhook", (req, res) => {
 
  // inicio_diagnostico
   agent.setContext({
-  name: 'contexto_depresion_inicio',
+  name: 'contexto_inicio_diagnostico',
   lifespan: 5
     agent.add(`Gracias por brindar tus datos, ${nombre}. ¿Deseas comenzar ahora con el diagnóstico de salud mental? (Responde: Sí / No)`);
 }); 
