@@ -4,16 +4,12 @@ const PDFDocument = require("pdfkit");
 const path = require("path");
 const express = require("express");
 const bodyParser = require("body-parser");
-const path = require('path');
 
 const app = express();
 app.use('/pdfs', express.static(path.join(__dirname, 'pdfs')));
 const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
-
-// Carpeta pública para archivos PDF
-app.use("/pdfs", express.static(path.join(__dirname, "pdfs")));
 
 // Asegura que exista la carpeta
 if (!fs.existsSync("pdfs")) {
@@ -28,36 +24,20 @@ app.get("/", (req, res) => {
 // Webhook principal
 app.post("/webhook", (req, res) => {
   const body = req.body;
+  const intentName = body.queryResult.intent.displayName;
+  const parameters = body.queryResult.parameters;
+
   console.log("📥 Webhook recibido:", JSON.stringify(body, null, 2));
 
-  const intentName = body.queryResult.intent.displayName;
-
- // inicio_diagnostico
-  agent.setContext({
-  name: 'contexto_inicio_diagnostico',
-  lifespan: 5
-    agent.add(`Gracias por brindar tus datos, ${nombre}. ¿Deseas comenzar ahora con el diagnóstico de salud mental? (Responde: Sí / No)`);
-}); 
-  
-  
-  
-  
-  // resultado_depresion
   if (intentName === "resultado_depresion") {
-    const puntaje = body.queryResult.parameters["puntaje_depresion"];
+    const puntaje = parameters["puntaje_depresion"];
     let interpretacion = "";
 
-    if (puntaje <= 4) {
-      interpretacion = "sin síntomas de depresión.";
-    } else if (puntaje <= 9) {
-      interpretacion = "síntomas leves de depresión.";
-    } else if (puntaje <= 14) {
-      interpretacion = "síntomas moderados de depresión.";
-    } else if (puntaje <= 19) {
-      interpretacion = "síntomas moderadamente severos de depresión.";
-    } else {
-      interpretacion = "síntomas severos de depresión.";
-    }
+    if (puntaje <= 4) interpretacion = "sin síntomas de depresión.";
+    else if (puntaje <= 9) interpretacion = "síntomas leves de depresión.";
+    else if (puntaje <= 14) interpretacion = "síntomas moderados de depresión.";
+    else if (puntaje <= 19) interpretacion = "síntomas moderadamente severos de depresión.";
+    else interpretacion = "síntomas severos de depresión.";
 
     const respuesta = `🧠 Tu puntaje en el test de depresión fue *${puntaje}*. Esto indica *${interpretacion}*`;
 
@@ -71,20 +51,14 @@ app.post("/webhook", (req, res) => {
       ]
     });
 
-  // resultado_ansiedad
   } else if (intentName === "resultado_ansiedad") {
-    const puntaje = body.queryResult.parameters["puntaje_ansiedad"];
+    const puntaje = parameters["puntaje_ansiedad"];
     let interpretacion = "";
 
-    if (puntaje <= 4) {
-      interpretacion = "ansiedad mínima.";
-    } else if (puntaje <= 9) {
-      interpretacion = "ansiedad leve.";
-    } else if (puntaje <= 14) {
-      interpretacion = "ansiedad moderada.";
-    } else {
-      interpretacion = "ansiedad severa.";
-    }
+    if (puntaje <= 4) interpretacion = "ansiedad mínima.";
+    else if (puntaje <= 9) interpretacion = "ansiedad leve.";
+    else if (puntaje <= 14) interpretacion = "ansiedad moderada.";
+    else interpretacion = "ansiedad severa.";
 
     const respuesta = `😟 Tu puntaje en el test de ansiedad fue *${puntaje}*. Esto indica *${interpretacion}*`;
 
@@ -98,20 +72,14 @@ app.post("/webhook", (req, res) => {
       ]
     });
 
-  // resultado_estres
   } else if (intentName === "resultado_estres") {
-    const puntaje = body.queryResult.parameters["puntaje_estres"];
+    const puntaje = parameters["puntaje_estres"];
     let interpretacion = "";
 
-    if (puntaje <= 5) {
-      interpretacion = "muy bajo estrés académico.";
-    } else if (puntaje <= 10) {
-      interpretacion = "bajo estrés académico.";
-    } else if (puntaje <= 15) {
-      interpretacion = "estrés académico moderado.";
-    } else {
-      interpretacion = "alto nivel de estrés académico.";
-    }
+    if (puntaje <= 5) interpretacion = "muy bajo estrés académico.";
+    else if (puntaje <= 10) interpretacion = "bajo estrés académico.";
+    else if (puntaje <= 15) interpretacion = "estrés académico moderado.";
+    else interpretacion = "alto nivel de estrés académico.";
 
     const respuesta = `📚 Tu puntaje en estrés académico fue *${puntaje}*. Esto indica *${interpretacion}*`;
 
@@ -125,20 +93,14 @@ app.post("/webhook", (req, res) => {
       ]
     });
 
-  // resultado_autoestima
   } else if (intentName === "resultado_autoestima") {
-    const puntaje = body.queryResult.parameters["puntaje_autoestima"];
+    const puntaje = parameters["puntaje_autoestima"];
     let interpretacion = "";
 
-    if (puntaje <= 5) {
-      interpretacion = "muy baja autoestima.";
-    } else if (puntaje <= 10) {
-      interpretacion = "baja autoestima.";
-    } else if (puntaje <= 15) {
-      interpretacion = "autoestima moderada.";
-    } else {
-      interpretacion = "alta autoestima.";
-    }
+    if (puntaje <= 5) interpretacion = "muy baja autoestima.";
+    else if (puntaje <= 10) interpretacion = "baja autoestima.";
+    else if (puntaje <= 15) interpretacion = "autoestima moderada.";
+    else interpretacion = "alta autoestima.";
 
     const respuesta = `💪 Tu puntaje en autoestima fue *${puntaje}*. Esto indica *${interpretacion}*`;
 
@@ -152,20 +114,14 @@ app.post("/webhook", (req, res) => {
       ]
     });
 
-  // resultado_habilidades
   } else if (intentName === "resultado_habilidades") {
-    const puntaje = body.queryResult.parameters["puntaje_habilidades"];
+    const puntaje = parameters["puntaje_habilidades"];
     let interpretacion = "";
 
-    if (puntaje <= 5) {
-      interpretacion = "dificultades severas en habilidades sociales.";
-    } else if (puntaje <= 10) {
-      interpretacion = "habilidades sociales bajas.";
-    } else if (puntaje <= 15) {
-      interpretacion = "habilidades sociales adecuadas.";
-    } else {
-      interpretacion = "excelentes habilidades sociales.";
-    }
+    if (puntaje <= 5) interpretacion = "dificultades severas en habilidades sociales.";
+    else if (puntaje <= 10) interpretacion = "habilidades sociales bajas.";
+    else if (puntaje <= 15) interpretacion = "habilidades sociales adecuadas.";
+    else interpretacion = "excelentes habilidades sociales.";
 
     const respuesta = `🤝 Tu puntaje en habilidades sociales fue *${puntaje}*. Esto indica *${interpretacion}*`;
 
@@ -179,20 +135,14 @@ app.post("/webhook", (req, res) => {
       ]
     });
 
-  // resultado_sueno
   } else if (intentName === "resultado_sueno") {
-    const puntaje = body.queryResult.parameters["puntaje_sueno"];
+    const puntaje = parameters["puntaje_sueno"];
     let interpretacion = "";
 
-    if (puntaje <= 5) {
-      interpretacion = "excelente calidad del sueño.";
-    } else if (puntaje <= 10) {
-      interpretacion = "calidad del sueño aceptable.";
-    } else if (puntaje <= 15) {
-      interpretacion = "trastornos leves del sueño.";
-    } else {
-      interpretacion = "trastornos severos del sueño.";
-    }
+    if (puntaje <= 5) interpretacion = "excelente calidad del sueño.";
+    else if (puntaje <= 10) interpretacion = "calidad del sueño aceptable.";
+    else if (puntaje <= 15) interpretacion = "trastornos leves del sueño.";
+    else interpretacion = "trastornos severos del sueño.";
 
     const respuesta = `😴 Tu puntaje en trastornos del sueño fue *${puntaje}*. Esto indica *${interpretacion}*`;
 
@@ -206,20 +156,14 @@ app.post("/webhook", (req, res) => {
       ]
     });
 
-  // resultado_bullying
   } else if (intentName === "resultado_bullying") {
-    const puntaje = body.queryResult.parameters["puntaje_bullying"];
+    const puntaje = parameters["puntaje_bullying"];
     let interpretacion = "";
 
-    if (puntaje <= 5) {
-      interpretacion = "no presenta indicios de acoso escolar.";
-    } else if (puntaje <= 10) {
-      interpretacion = "posible presencia leve de bullying.";
-    } else if (puntaje <= 15) {
-      interpretacion = "probables síntomas de acoso escolar.";
-    } else {
-      interpretacion = "alto riesgo de acoso escolar.";
-    }
+    if (puntaje <= 5) interpretacion = "no presenta indicios de acoso escolar.";
+    else if (puntaje <= 10) interpretacion = "posible presencia leve de bullying.";
+    else if (puntaje <= 15) interpretacion = "probables síntomas de acoso escolar.";
+    else interpretacion = "alto riesgo de acoso escolar.";
 
     const respuesta = `🚨 Tu puntaje en bullying fue *${puntaje}*. Esto indica *${interpretacion}*`;
 
@@ -233,8 +177,7 @@ app.post("/webhook", (req, res) => {
       ]
     });
 
-  // resumen_final_resultados
-  } else if (intent === 'resumen_final_resultados') {
+  } else if (intentName === "resumen_final_resultados") {
     const nombre = parameters.nombre || 'Estudiante';
     const grado = parameters.grado || 'No especificado';
     const seccion = parameters.seccion || 'No especificado';
@@ -274,49 +217,20 @@ app.post("/webhook", (req, res) => {
           {
             text: {
               text: [
-                `Gracias por completar la evaluación, ${nombre}.`,
-                `Aquí tienes un resumen de tus resultados:`,
-                `• Depresión: ${puntajeDepresion}`,
-                `• Ansiedad: ${puntajeAnsiedad}`,
-                `• Estrés Académico: ${puntajeEstres}`,
-                `• Autoestima: ${puntajeAutoestima}`,
-                `• Habilidades Sociales: ${puntajeHabilidades}`,
-                `• Trastornos del Sueño: ${puntajeSueno}`,
-                `• Acoso Escolar: ${puntajeBullying}`,
-                ``,
-                `Puedes descargar tu informe completo aquí: ${pdfUrl}`
+                `📄 Aquí tienes tu informe de salud mental:\n${pdfUrl}`
               ]
             }
           }
         ]
       });
     });
-
-    writeStream.on('error', (err) => {
-      console.error('Error al generar PDF:', err);
-      res.json({
-        fulfillmentMessages: [
-          {
-            text: {
-              text: ['Ocurrió un error al generar tu informe. Intenta nuevamente más tarde.']
-            }
-          }
-        ]
-      });
+  } else {
+    res.json({
+      fulfillmentText: "⚠️ Lo siento, no entendí tu solicitud."
     });
   }
+});
 
 app.listen(port, () => {
-  console.log(`🚀 Servidor funcionando en http://localhost:${port}`);
+  console.log(`🚀 Servidor iniciado en http://localhost:${port}`);
 });
-  
-console.log("Datos recibidos:");
-console.log("Nombre:", nombre_completo);
-console.log("Edad:", edad);
-console.log("Puntaje Depresión:", puntaje_depresion);
-console.log("Puntaje Ansiedad:", puntaje_ansiedad);
-console.log("Puntaje Estrés:", puntaje_estres);
-console.log("Puntaje Autoestima:", puntaje_autoestima);
-console.log("Puntaje Habilidades Sociales:", puntaje_habilidades);
-console.log("Puntaje Sueño:", puntaje_sueno);
-console.log("Puntaje Acoso Escolar:", puntaje_acoso);
