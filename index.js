@@ -119,7 +119,7 @@ app.post("/webhook", (req, res) => {
     return generarRespuesta(puntaje, interpretacion, "🚨 Tu puntaje en bullying fue", "contexto_resumen_inicio");
 
   } else if (intentName === "resumen_final_resultados") {
-    const nombre = parameters.nombre || 'Estudiante';
+    let nombre = parameters.nombre || 'Estudiante';
     const grado = parameters.grado || 'No especificado';
     const seccion = parameters.seccion || 'No especificado';
     const puntajeDepresion = parameters.puntaje_depresion || 0;
@@ -130,41 +130,52 @@ app.post("/webhook", (req, res) => {
     const puntajeSueno = parameters.puntaje_sueno || 0;
     const puntajeBullying = parameters.puntaje_bullying || 0;
 
-    const doc = new PDFDocument();
-    const filePath = `pdfs/${nombre.replace(/ /g, '_')}_resultado.pdf`;
-    const writeStream = fs.createWriteStream(filePath);
-    doc.pipe(writeStream);
+    // Normalizar nombre para usarlo como nombre de archivo
+    const nombreArchivo = nombre.trim().length > 0 ? nombre.trim().replace(/[^a-zA-Z0-9_]/g, '_') : 'Estudiante';
+    const filePath = `pdfs/${nombreArchivo}_resultado.pdf`;
 
-    doc.fontSize(18).text('Informe de Evaluación de Salud Mental', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`Nombre: ${nombre}`);
-    doc.text(`Grado: ${grado}`);
-    doc.text(`Sección: ${seccion}`);
-    doc.moveDown();
-    doc.text(`Puntaje Depresión: ${puntajeDepresion}`);
-    doc.text(`Puntaje Ansiedad: ${puntajeAnsiedad}`);
-    doc.text(`Puntaje Estrés Académico: ${puntajeEstres}`);
-    doc.text(`Puntaje Autoestima: ${puntajeAutoestima}`);
-    doc.text(`Puntaje Habilidades Sociales: ${puntajeHabilidades}`);
-    doc.text(`Puntaje Trastornos del Sueño: ${puntajeSueno}`);
-    doc.text(`Puntaje Acoso Escolar: ${puntajeBullying}`);
-    doc.end();
+    try {
+      const doc = new PDFDocument();
+      const writeStream = fs.createWriteStream(filePath);
+      doc.pipe(writeStream);
 
-    writeStream.on('finish', () => {
-      const pdfUrl = `https://TUDOMINIO.com/pdfs/${encodeURIComponent(nombre.replace(/ /g, '_'))}_resultado.pdf`;
+      doc.fontSize(18).text('Informe de Evaluación de Salud Mental', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(12).text(`Nombre: ${nombre}`);
+      doc.text(`Grado: ${grado}`);
+      doc.text(`Sección: ${seccion}`);
+      doc.moveDown();
+      doc.text(`Puntaje Depresión: ${puntajeDepresion}`);
+      doc.text(`Puntaje Ansiedad: ${puntajeAnsiedad}`);
+      doc.text(`Puntaje Estrés Académico: ${puntajeEstres}`);
+      doc.text(`Puntaje Autoestima: ${puntajeAutoestima}`);
+      doc.text(`Puntaje Habilidades Sociales: ${puntajeHabilidades}`);
+      doc.text(`Puntaje Trastornos del Sueño: ${puntajeSueno}`);
+      doc.text(`Puntaje Acoso Escolar: ${puntajeBullying}`);
+      doc.end();
 
-      res.json({
-        fulfillmentMessages: [
-          {
-            text: {
-              text: [
-                `📄 Aquí tienes tu informe de salud mental:\n${pdfUrl}`
-              ]
+      writeStream.on('finish', () => {
+        const dominio = req.headers.host || "localhost:3000";
+        const pdfUrl = `https://${dominio}/pdfs/${encodeURIComponent(nombreArchivo)}_resultado.pdf`;
+
+        res.json({
+          fulfillmentMessages: [
+            {
+              text: {
+                text: [
+                  `📄 Aquí tienes tu informe de salud mental:\n${pdfUrl}`
+                ]
+              }
             }
-          }
-        ]
+          ]
+        });
       });
-    });
+    } catch (error) {
+      console.error("❌ Error al generar el PDF:", error);
+      res.json({
+        fulfillmentText: "⚠️ Ocurrió un error al generar el informe. Intenta nuevamente más tarde."
+      });
+    }
 
   } else if (intentName === "reiniciar_diagnostico") {
     res.json({
