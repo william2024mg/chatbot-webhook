@@ -26,6 +26,20 @@ app.post("/webhook", (req, res) => {
 
   console.log("📥 Webhook recibido:", JSON.stringify(body, null, 2));
 
+  const generarRespuesta = (puntaje, interpretacion, mensajeInicial, contexto) => {
+    const respuesta = `${mensajeInicial} *${puntaje}*. Esto indica *${interpretacion}*\n\n¿Deseas continuar? (Responde: Sí / No)`;
+
+    return res.json({
+      fulfillmentText: respuesta,
+      outputContexts: [
+        {
+          name: `${body.session}/contexts/${contexto}`,
+          lifespanCount: 1
+        }
+      ]
+    });
+  };
+
   if (intentName === "resultado_depresion") {
     const puntaje = parameters["puntaje_depresion"];
     let interpretacion = "";
@@ -36,17 +50,7 @@ app.post("/webhook", (req, res) => {
     else if (puntaje <= 19) interpretacion = "síntomas moderadamente severos de depresión.";
     else interpretacion = "síntomas severos de depresión.";
 
-    const respuesta = `🧠 Tu puntaje en el test de depresión fue *${puntaje}*. Esto indica *${interpretacion}*`;
-
-    res.json({
-      fulfillmentText: respuesta,
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/contexto_ansiedad_inicio`,
-          lifespanCount: 1
-        }
-      ]
-    });
+    return generarRespuesta(puntaje, interpretacion, "🧠 Tu puntaje en el test de depresión fue", "contexto_ansiedad_inicio");
 
   } else if (intentName === "resultado_ansiedad") {
     const puntaje = parameters["puntaje_ansiedad"];
@@ -57,17 +61,7 @@ app.post("/webhook", (req, res) => {
     else if (puntaje <= 14) interpretacion = "ansiedad moderada.";
     else interpretacion = "ansiedad severa.";
 
-    const respuesta = `😟 Tu puntaje en el test de ansiedad fue *${puntaje}*. Esto indica *${interpretacion}*`;
-
-    res.json({
-      fulfillmentText: respuesta,
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/contexto_estres_inicio`,
-          lifespanCount: 1
-        }
-      ]
-    });
+    return generarRespuesta(puntaje, interpretacion, "😟 Tu puntaje en el test de ansiedad fue", "contexto_estres_inicio");
 
   } else if (intentName === "resultado_estres") {
     const puntaje = parameters["puntaje_estres"];
@@ -78,17 +72,7 @@ app.post("/webhook", (req, res) => {
     else if (puntaje <= 15) interpretacion = "estrés académico moderado.";
     else interpretacion = "alto nivel de estrés académico.";
 
-    const respuesta = `📚 Tu puntaje en estrés académico fue *${puntaje}*. Esto indica *${interpretacion}*`;
-
-    res.json({
-      fulfillmentText: respuesta,
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/contexto_autoestima_inicio`,
-          lifespanCount: 1
-        }
-      ]
-    });
+    return generarRespuesta(puntaje, interpretacion, "📚 Tu puntaje en estrés académico fue", "contexto_autoestima_inicio");
 
   } else if (intentName === "resultado_autoestima") {
     const puntaje = parameters["puntaje_autoestima"];
@@ -99,17 +83,7 @@ app.post("/webhook", (req, res) => {
     else if (puntaje <= 15) interpretacion = "autoestima moderada.";
     else interpretacion = "alta autoestima.";
 
-    const respuesta = `💪 Tu puntaje en autoestima fue *${puntaje}*. Esto indica *${interpretacion}*`;
-
-    res.json({
-      fulfillmentText: respuesta,
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/contexto_habilidades_inicio`,
-          lifespanCount: 1
-        }
-      ]
-    });
+    return generarRespuesta(puntaje, interpretacion, "💪 Tu puntaje en autoestima fue", "contexto_habilidades_inicio");
 
   } else if (intentName === "resultado_habilidades") {
     const puntaje = parameters["puntaje_habilidades"];
@@ -120,17 +94,7 @@ app.post("/webhook", (req, res) => {
     else if (puntaje <= 15) interpretacion = "habilidades sociales adecuadas.";
     else interpretacion = "excelentes habilidades sociales.";
 
-    const respuesta = `🤝 Tu puntaje en habilidades sociales fue *${puntaje}*. Esto indica *${interpretacion}*`;
-
-    res.json({
-      fulfillmentText: respuesta,
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/contexto_sueno_inicio`,
-          lifespanCount: 1
-        }
-      ]
-    });
+    return generarRespuesta(puntaje, interpretacion, "🤝 Tu puntaje en habilidades sociales fue", "contexto_sueno_inicio");
 
   } else if (intentName === "resultado_sueno") {
     const puntaje = parameters["puntaje_sueno"];
@@ -141,17 +105,7 @@ app.post("/webhook", (req, res) => {
     else if (puntaje <= 15) interpretacion = "trastornos leves del sueño.";
     else interpretacion = "trastornos severos del sueño.";
 
-    const respuesta = `😴 Tu puntaje en trastornos del sueño fue *${puntaje}*. Esto indica *${interpretacion}*`;
-
-    res.json({
-      fulfillmentText: respuesta,
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/contexto_bullying_inicio`,
-          lifespanCount: 1
-        }
-      ]
-    });
+    return generarRespuesta(puntaje, interpretacion, "😴 Tu puntaje en trastornos del sueño fue", "contexto_bullying_inicio");
 
   } else if (intentName === "resultado_bullying") {
     const puntaje = parameters["puntaje_bullying"];
@@ -162,17 +116,7 @@ app.post("/webhook", (req, res) => {
     else if (puntaje <= 15) interpretacion = "probables síntomas de acoso escolar.";
     else interpretacion = "alto riesgo de acoso escolar.";
 
-    const respuesta = `🚨 Tu puntaje en bullying fue *${puntaje}*. Esto indica *${interpretacion}*`;
-
-    res.json({
-      fulfillmentText: respuesta,
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/contexto_resumen_inicio`,
-          lifespanCount: 1
-        }
-      ]
-    });
+    return generarRespuesta(puntaje, interpretacion, "🚨 Tu puntaje en bullying fue", "contexto_resumen_inicio");
 
   } else if (intentName === "resumen_final_resultados") {
     const nombre = parameters.nombre || 'Estudiante';
@@ -243,6 +187,5 @@ app.post("/webhook", (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
-
 
 
