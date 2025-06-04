@@ -11,17 +11,14 @@ const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
-// Asegura que exista la carpeta
 if (!fs.existsSync("pdfs")) {
   fs.mkdirSync("pdfs");
 }
 
-// Ruta de prueba
 app.get("/", (req, res) => {
   res.send("✅ Servidor de Chatbot activo");
 });
 
-// Webhook principal
 app.post("/webhook", (req, res) => {
   const body = req.body;
   const intentName = body.queryResult.intent.displayName;
@@ -224,6 +221,18 @@ app.post("/webhook", (req, res) => {
         ]
       });
     });
+
+  } else if (intentName === "reiniciar_diagnostico") {
+    res.json({
+      fulfillmentText: "🔄 Has reiniciado el diagnóstico. Comencemos nuevamente con el test de depresión.",
+      outputContexts: [
+        {
+          name: `${body.session}/contexts/contexto_depresion_inicio`,
+          lifespanCount: 1
+        }
+      ]
+    });
+
   } else {
     res.json({
       fulfillmentText: "⚠️ Lo siento, no entendí tu solicitud."
@@ -232,5 +241,8 @@ app.post("/webhook", (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Servidor iniciado en http://localhost:${port}`);
+  console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
+
+
