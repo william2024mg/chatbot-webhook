@@ -82,29 +82,7 @@ app.post("/webhook", (req, res) => {
     else if (puntaje <= 15) interpretacion = "autoestima moderada.";
     else interpretacion = "alta autoestima.";
 
-    return generarRespuesta(puntaje, interpretacion, "💪 Tu puntaje en autoestima fue", "contexto_habilidades_inicio");
-
-  } else if (intentName === "resultado_habilidades") {
-    const puntaje = parameters["puntaje_habilidades"];
-    let interpretacion = "";
-
-    if (puntaje <= 5) interpretacion = "dificultades severas en habilidades sociales.";
-    else if (puntaje <= 10) interpretacion = "habilidades sociales bajas.";
-    else if (puntaje <= 15) interpretacion = "habilidades sociales adecuadas.";
-    else interpretacion = "excelentes habilidades sociales.";
-
-    return generarRespuesta(puntaje, interpretacion, "🤝 Tu puntaje en habilidades sociales fue", "contexto_sueno_inicio");
-
-  } else if (intentName === "resultado_sueno") {
-    const puntaje = parameters["puntaje_sueno"];
-    let interpretacion = "";
-
-    if (puntaje <= 5) interpretacion = "excelente calidad del sueño.";
-    else if (puntaje <= 10) interpretacion = "calidad del sueño aceptable.";
-    else if (puntaje <= 15) interpretacion = "trastornos leves del sueño.";
-    else interpretacion = "trastornos severos del sueño.";
-
-    return generarRespuesta(puntaje, interpretacion, "😴 Tu puntaje en trastornos del sueño fue", "contexto_bullying_inicio");
+    return generarRespuesta(puntaje, interpretacion, "💪 Tu puntaje en autoestima fue", "contexto_bullying_inicio");
 
   } else if (intentName === "resultado_bullying") {
     const puntaje = parameters["puntaje_bullying"];
@@ -125,8 +103,6 @@ app.post("/webhook", (req, res) => {
     const puntajeAnsiedad = parameters.puntaje_ansiedad || 0;
     const puntajeEstres = parameters.puntaje_estres || 0;
     const puntajeAutoestima = parameters.puntaje_autoestima || 0;
-    const puntajeHabilidades = parameters.puntaje_habilidades || 0;
-    const puntajeSueno = parameters.puntaje_sueno || 0;
     const puntajeBullying = parameters.puntaje_bullying || 0;
 
     const nombreArchivo = nombre.trim().length > 0 ? nombre.trim().replace(/[^a-zA-Z0-9_]/g, '_') : 'Estudiante';
@@ -147,8 +123,6 @@ app.post("/webhook", (req, res) => {
       doc.text(`Puntaje Ansiedad: ${puntajeAnsiedad}`);
       doc.text(`Puntaje Estrés Académico: ${puntajeEstres}`);
       doc.text(`Puntaje Autoestima: ${puntajeAutoestima}`);
-      doc.text(`Puntaje Habilidades Sociales: ${puntajeHabilidades}`);
-      doc.text(`Puntaje Trastornos del Sueño: ${puntajeSueno}`);
       doc.text(`Puntaje Acoso Escolar: ${puntajeBullying}`);
       doc.end();
 
