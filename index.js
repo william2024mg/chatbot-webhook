@@ -130,7 +130,6 @@ app.post("/webhook", (req, res) => {
     const puntajeSueno = parameters.puntaje_sueno || 0;
     const puntajeBullying = parameters.puntaje_bullying || 0;
 
-    // Normalizar nombre para usarlo como nombre de archivo
     const nombreArchivo = nombre.trim().length > 0 ? nombre.trim().replace(/[^a-zA-Z0-9_]/g, '_') : 'Estudiante';
     const filePath = `pdfs/${nombreArchivo}_resultado.pdf`;
 
@@ -156,7 +155,7 @@ app.post("/webhook", (req, res) => {
 
       writeStream.on('finish', () => {
         const dominio = req.headers.host || "localhost:3000";
-        const pdfUrl = `https://${dominio}/pdfs/${encodeURIComponent(nombreArchivo)}_resultado.pdf`;
+        const pdfUrl = `http://${dominio}/pdfs/${encodeURIComponent(nombreArchivo)}_resultado.pdf`;
 
         res.json({
           fulfillmentMessages: [
