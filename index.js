@@ -1,4 +1,3 @@
-/ index.js
 const fs = require("fs");
 const PDFDocument = require("pdfkit");
 const path = require("path");
