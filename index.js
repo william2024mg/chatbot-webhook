@@ -120,6 +120,19 @@ app.post("/webhook", (req, res) => {
     const interpretarBullying = (p) =>
       p <= 5 ? "Sin indicios" : p <= 10 ? "Leve" : p <= 15 ? "Probable" : "Alto riesgo";
 
+    // 🧠 Diagnóstico general automático
+    let riesgos = [];
+    if (puntajeDepresion > 14) riesgos.push("depresión");
+    if (puntajeAnsiedad > 14) riesgos.push("ansiedad");
+    if (puntajeEstres > 15) riesgos.push("estrés académico");
+    if (puntajeAutoestima <= 5) riesgos.push("muy baja autoestima");
+    if (puntajeBullying > 10) riesgos.push("acoso escolar");
+
+    let diagnosticoGeneral =
+      riesgos.length > 0
+        ? `⚠️ El estudiante presenta posibles indicios de: ${riesgos.join(", ")}.`
+        : "✅ El estudiante no presenta indicios relevantes de alteración en su salud mental.";
+
     const nombreArchivo = nombre.trim().replace(/[^a-zA-Z0-9_]/g, '_') || 'Estudiante';
     const filePath = `pdfs/${nombreArchivo}_resultado.pdf`;
 
@@ -142,6 +155,10 @@ app.post("/webhook", (req, res) => {
       doc.text(`🚨 Acoso Escolar: ${puntajeBullying} puntos – ${interpretarBullying(puntajeBullying)}`);
 
       doc.moveDown();
+      doc.font("Helvetica-Bold").text("📝 Diagnóstico general:", { underline: true });
+      doc.font("Helvetica").text(diagnosticoGeneral);
+      doc.moveDown();
+
       doc.text("Este informe ha sido generado automáticamente por el sistema de evaluación de salud mental. Se recomienda revisar los resultados con un especialista.");
       doc.end();
 
@@ -155,6 +172,13 @@ app.post("/webhook", (req, res) => {
               text: {
                 text: [
                   `📄 Tu informe está listo. Puedes descargarlo desde aquí: ${pdfUrl}`
+                ]
+              }
+            },
+            {
+              text: {
+                text: [
+                  `📌 Diagnóstico general: ${diagnosticoGeneral}`
                 ]
               }
             },
