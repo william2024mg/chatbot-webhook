@@ -96,7 +96,7 @@ app.post("/webhook", (req, res) => {
     return generarRespuesta(puntaje, interpretacion, "🚨 Tu puntaje en bullying fue", "contexto_resumen_inicio");
 
   } else if (intentName === "resumen_final_resultados") {
-    let nombre = parameters.nombre || 'Estudiante';
+    const nombre = parameters.nombre || 'Estudiante';
     const grado = parameters.grado || 'No especificado';
     const seccion = parameters.seccion || 'No especificado';
     const puntajeDepresion = parameters.puntaje_depresion || 0;
@@ -120,7 +120,7 @@ app.post("/webhook", (req, res) => {
     const interpretarBullying = (p) =>
       p <= 5 ? "Sin indicios" : p <= 10 ? "Leve" : p <= 15 ? "Probable" : "Alto riesgo";
 
-    const nombreArchivo = nombre.trim().length > 0 ? nombre.trim().replace(/[^a-zA-Z0-9_]/g, '_') : 'Estudiante';
+    const nombreArchivo = nombre.trim().replace(/[^a-zA-Z0-9_]/g, '_') || 'Estudiante';
     const filePath = `pdfs/${nombreArchivo}_resultado.pdf`;
 
     try {
@@ -141,6 +141,8 @@ app.post("/webhook", (req, res) => {
       doc.text(`💪 Autoestima: ${puntajeAutoestima} puntos – ${interpretarAutoestima(puntajeAutoestima)}`);
       doc.text(`🚨 Acoso Escolar: ${puntajeBullying} puntos – ${interpretarBullying(puntajeBullying)}`);
 
+      doc.moveDown();
+      doc.text("Este informe ha sido generado automáticamente por el sistema de evaluación de salud mental. Se recomienda revisar los resultados con un especialista.");
       doc.end();
 
       writeStream.on('finish', () => {
@@ -152,14 +154,14 @@ app.post("/webhook", (req, res) => {
             {
               text: {
                 text: [
-                  `📄 Aquí tienes tu informe de salud mental:\n${pdfUrl}`
+                  `📄 Tu informe está listo. Puedes descargarlo desde aquí: ${pdfUrl}`
                 ]
               }
             },
             {
               text: {
                 text: [
-                  `✅ Has completado el test. Consulta tu informe aquí para que sea evaluado por un especialista.`
+                  `✨ Gracias por completar el test. Recuerda que estos resultados son orientativos. Si lo necesitas, no dudes en buscar ayuda profesional. ¡Cuida tu salud mental! 💚`
                 ]
               }
             }
@@ -194,3 +196,4 @@ app.post("/webhook", (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
