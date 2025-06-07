@@ -105,6 +105,21 @@ app.post("/webhook", (req, res) => {
     const puntajeAutoestima = parameters.puntaje_autoestima || 0;
     const puntajeBullying = parameters.puntaje_bullying || 0;
 
+    const interpretarDepresion = (p) =>
+      p <= 4 ? "Sin síntomas" : p <= 9 ? "Leve" : p <= 14 ? "Moderado" : p <= 19 ? "Moderadamente severo" : "Severo";
+
+    const interpretarAnsiedad = (p) =>
+      p <= 4 ? "Mínima" : p <= 9 ? "Leve" : p <= 14 ? "Moderada" : "Severa";
+
+    const interpretarEstres = (p) =>
+      p <= 5 ? "Muy bajo" : p <= 10 ? "Bajo" : p <= 15 ? "Moderado" : "Alto";
+
+    const interpretarAutoestima = (p) =>
+      p <= 5 ? "Muy baja" : p <= 10 ? "Baja" : p <= 15 ? "Moderada" : "Alta";
+
+    const interpretarBullying = (p) =>
+      p <= 5 ? "Sin indicios" : p <= 10 ? "Leve" : p <= 15 ? "Probable" : "Alto riesgo";
+
     const nombreArchivo = nombre.trim().length > 0 ? nombre.trim().replace(/[^a-zA-Z0-9_]/g, '_') : 'Estudiante';
     const filePath = `pdfs/${nombreArchivo}_resultado.pdf`;
 
@@ -119,11 +134,13 @@ app.post("/webhook", (req, res) => {
       doc.text(`Grado: ${grado}`);
       doc.text(`Sección: ${seccion}`);
       doc.moveDown();
-      doc.text(`Puntaje Depresión: ${puntajeDepresion}`);
-      doc.text(`Puntaje Ansiedad: ${puntajeAnsiedad}`);
-      doc.text(`Puntaje Estrés Académico: ${puntajeEstres}`);
-      doc.text(`Puntaje Autoestima: ${puntajeAutoestima}`);
-      doc.text(`Puntaje Acoso Escolar: ${puntajeBullying}`);
+
+      doc.text(`🧠 Depresión: ${puntajeDepresion} puntos – ${interpretarDepresion(puntajeDepresion)}`);
+      doc.text(`😟 Ansiedad: ${puntajeAnsiedad} puntos – ${interpretarAnsiedad(puntajeAnsiedad)}`);
+      doc.text(`📚 Estrés Académico: ${puntajeEstres} puntos – ${interpretarEstres(puntajeEstres)}`);
+      doc.text(`💪 Autoestima: ${puntajeAutoestima} puntos – ${interpretarAutoestima(puntajeAutoestima)}`);
+      doc.text(`🚨 Acoso Escolar: ${puntajeBullying} puntos – ${interpretarBullying(puntajeBullying)}`);
+
       doc.end();
 
       writeStream.on('finish', () => {
@@ -136,6 +153,13 @@ app.post("/webhook", (req, res) => {
               text: {
                 text: [
                   `📄 Aquí tienes tu informe de salud mental:\n${pdfUrl}`
+                ]
+              }
+            },
+            {
+              text: {
+                text: [
+                  `✅ Has completado el test. Consulta tu informe aquí para que sea evaluado por un especialista.`
                 ]
               }
             }
@@ -170,5 +194,3 @@ app.post("/webhook", (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
-
-
