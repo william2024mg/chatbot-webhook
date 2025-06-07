@@ -97,8 +97,8 @@ app.post("/webhook", (req, res) => {
 
   } else if (intentName === "resumen_final_resultados") {
     const nombre = parameters.nombre || 'Estudiante';
-    const grado = parameters.grado || 'No especificado';
-    const seccion = parameters.seccion || 'No especificado';
+    const edad = parameters.edad || 'No especificada';
+    const celular = parameters.celular_apoderado || 'No especificado';
     const puntajeDepresion = parameters.puntaje_depresion || 0;
     const puntajeAnsiedad = parameters.puntaje_ansiedad || 0;
     const puntajeEstres = parameters.puntaje_estres || 0;
@@ -120,7 +120,6 @@ app.post("/webhook", (req, res) => {
     const interpretarBullying = (p) =>
       p <= 5 ? "Sin indicios" : p <= 10 ? "Leve" : p <= 15 ? "Probable" : "Alto riesgo";
 
-    // 🧠 Diagnóstico general automático
     let riesgos = [];
     if (puntajeDepresion > 14) riesgos.push("depresión");
     if (puntajeAnsiedad > 14) riesgos.push("ansiedad");
@@ -144,8 +143,8 @@ app.post("/webhook", (req, res) => {
       doc.fontSize(18).text('Informe de Evaluación de Salud Mental', { align: 'center' });
       doc.moveDown();
       doc.fontSize(12).text(`Nombre: ${nombre}`);
-      doc.text(`Grado: ${grado}`);
-      doc.text(`Sección: ${seccion}`);
+      doc.text(`Edad: ${edad}`);
+      doc.text(`Celular del apoderado: ${celular}`);
       doc.moveDown();
 
       doc.text(`🧠 Depresión: ${puntajeDepresion} puntos – ${interpretarDepresion(puntajeDepresion)}`);
@@ -209,13 +208,15 @@ app.post("/webhook", (req, res) => {
         }
       ]
     });
-
   } else {
-    res.json({
-      fulfillmentText: "⚠️ Lo siento, no entendí tu solicitud."
-    });
+    res.json({ fulfillmentText: "❓ No entendí tu solicitud. ¿Puedes repetirla?" });
   }
 });
+
+app.listen(port, () => {
+  console.log(`🚀 Servidor escuchando en el puerto ${port}`);
+});
+
 
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
