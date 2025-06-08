@@ -2,9 +2,9 @@
   "name": "chatbot-webhook",
   "version": "1.0.0",
   "description": "Chatbot Webhook para Dialogflow",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
+ "main": "functions/index.js",
+"scripts": {
+  "start": "node functions/index.js"
   },
   "keywords": [],
   "author": "William M",
