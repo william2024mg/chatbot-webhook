@@ -1,224 +1,159 @@
-const fs = require("fs");
-const PDFDocument = require("pdfkit");
-const path = require("path");
-const express = require("express");
-const bodyParser = require("body-parser");
+const functions = require("firebase-functions");
+const { WebhookClient } = require("dialogflow-fulfillment");
 
-const app = express();
-app.use('/pdfs', express.static(path.join(__dirname, 'pdfs')));
-const port = process.env.PORT || 3000;
+exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
+  const agent = new WebhookClient({ request, response });
 
-app.use(bodyParser.json());
-
-if (!fs.existsSync("pdfs")) {
-  fs.mkdirSync("pdfs");
-}
-
-app.get("/", (req, res) => {
-  res.send("✅ Servidor de Chatbot activo");
-});
-
-app.post("/webhook", (req, res) => {
-  const body = req.body;
-  const intentName = body.queryResult.intent.displayName;
-  const parameters = body.queryResult.parameters;
-
-  console.log("📥 Webhook recibido:", JSON.stringify(body, null, 2));
-
-  const generarRespuesta = (puntaje, interpretacion, mensajeInicial, contexto) => {
-    const respuesta = `${mensajeInicial} *${puntaje}*. Esto indica *${interpretacion}*\n\n¿Deseas continuar? (Responde: Sí / No)`;
-
-    return res.json({
-      fulfillmentText: respuesta,
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/${contexto}`,
-          lifespanCount: 1
-        }
-      ]
+  // Función genérica para calcular resultados por ítem
+  function calcularResultado(agent, preguntas, parametroFinal) {
+    let total = 0;
+    preguntas.forEach(p => {
+      const valor = parseInt(agent.parameters[p]);
+      if (!isNaN(valor)) total += valor;
     });
-  };
 
-  if (intentName === "resultado_depresion") {
-    const puntaje = parameters["puntaje_depresion"];
-    let interpretacion = "";
+    let nivel = "No evaluado";
+    let mensaje = "";
 
-    if (puntaje <= 4) interpretacion = "sin síntomas de depresión.";
-    else if (puntaje <= 9) interpretacion = "síntomas leves de depresión.";
-    else if (puntaje <= 14) interpretacion = "síntomas moderados de depresión.";
-    else if (puntaje <= 19) interpretacion = "síntomas moderadamente severos de depresión.";
-    else interpretacion = "síntomas severos de depresión.";
-
-    return generarRespuesta(puntaje, interpretacion, "🧠 Tu puntaje en el test de depresión fue", "contexto_ansiedad_inicio");
-
-  } else if (intentName === "resultado_ansiedad") {
-    const puntaje = parameters["puntaje_ansiedad"];
-    let interpretacion = "";
-
-    if (puntaje <= 4) interpretacion = "ansiedad mínima.";
-    else if (puntaje <= 9) interpretacion = "ansiedad leve.";
-    else if (puntaje <= 14) interpretacion = "ansiedad moderada.";
-    else interpretacion = "ansiedad severa.";
-
-    return generarRespuesta(puntaje, interpretacion, "😟 Tu puntaje en el test de ansiedad fue", "contexto_estres_inicio");
-
-  } else if (intentName === "resultado_estres") {
-    const puntaje = parameters["puntaje_estres"];
-    let interpretacion = "";
-
-    if (puntaje <= 5) interpretacion = "muy bajo estrés académico.";
-    else if (puntaje <= 10) interpretacion = "bajo estrés académico.";
-    else if (puntaje <= 15) interpretacion = "estrés académico moderado.";
-    else interpretacion = "alto nivel de estrés académico.";
-
-    return generarRespuesta(puntaje, interpretacion, "📚 Tu puntaje en estrés académico fue", "contexto_autoestima_inicio");
-
-  } else if (intentName === "resultado_autoestima") {
-    const puntaje = parameters["puntaje_autoestima"];
-    let interpretacion = "";
-
-    if (puntaje <= 5) interpretacion = "muy baja autoestima.";
-    else if (puntaje <= 10) interpretacion = "baja autoestima.";
-    else if (puntaje <= 15) interpretacion = "autoestima moderada.";
-    else interpretacion = "alta autoestima.";
-
-    return generarRespuesta(puntaje, interpretacion, "💪 Tu puntaje en autoestima fue", "contexto_bullying_inicio");
-
-  } else if (intentName === "resultado_bullying") {
-    const puntaje = parameters["puntaje_bullying"];
-    let interpretacion = "";
-
-    if (puntaje <= 5) interpretacion = "no presenta indicios de acoso escolar.";
-    else if (puntaje <= 10) interpretacion = "posible presencia leve de bullying.";
-    else if (puntaje <= 15) interpretacion = "probables síntomas de acoso escolar.";
-    else interpretacion = "alto riesgo de acoso escolar.";
-
-    return generarRespuesta(puntaje, interpretacion, "🚨 Tu puntaje en bullying fue", "contexto_resumen_inicio");
-
-  } else if (intentName === "resumen_final_resultados") {
-    const nombre = parameters.nombre || 'Estudiante';
-    const edad = parameters.edad || 'No especificada';
-    const celular = parameters.celular_apoderado || 'No especificado';
-    const puntajeDepresion = parameters.puntaje_depresion || 0;
-    const puntajeAnsiedad = parameters.puntaje_ansiedad || 0;
-    const puntajeEstres = parameters.puntaje_estres || 0;
-    const puntajeAutoestima = parameters.puntaje_autoestima || 0;
-    const puntajeBullying = parameters.puntaje_bullying || 0;
-
-    const interpretarDepresion = (p) =>
-      p <= 4 ? "Sin síntomas" : p <= 9 ? "Leve" : p <= 14 ? "Moderado" : p <= 19 ? "Moderadamente severo" : "Severo";
-
-    const interpretarAnsiedad = (p) =>
-      p <= 4 ? "Mínima" : p <= 9 ? "Leve" : p <= 14 ? "Moderada" : "Severa";
-
-    const interpretarEstres = (p) =>
-      p <= 5 ? "Muy bajo" : p <= 10 ? "Bajo" : p <= 15 ? "Moderado" : "Alto";
-
-    const interpretarAutoestima = (p) =>
-      p <= 5 ? "Muy baja" : p <= 10 ? "Baja" : p <= 15 ? "Moderada" : "Alta";
-
-    const interpretarBullying = (p) =>
-      p <= 5 ? "Sin indicios" : p <= 10 ? "Leve" : p <= 15 ? "Probable" : "Alto riesgo";
-
-    let riesgos = [];
-    if (puntajeDepresion > 14) riesgos.push("depresión");
-    if (puntajeAnsiedad > 14) riesgos.push("ansiedad");
-    if (puntajeEstres > 15) riesgos.push("estrés académico");
-    if (puntajeAutoestima <= 5) riesgos.push("muy baja autoestima");
-    if (puntajeBullying > 10) riesgos.push("acoso escolar");
-
-    let diagnosticoGeneral =
-      riesgos.length > 0
-        ? `⚠️ El estudiante presenta posibles indicios de: ${riesgos.join(", ")}.`
-        : "✅ El estudiante no presenta indicios relevantes de alteración en su salud mental.";
-
-    const nombreArchivo = nombre.trim().replace(/[^a-zA-Z0-9_]/g, '_') || 'Estudiante';
-    const filePath = `pdfs/${nombreArchivo}_resultado.pdf`;
-
-    try {
-      const doc = new PDFDocument();
-      const writeStream = fs.createWriteStream(filePath);
-      doc.pipe(writeStream);
-
-      doc.fontSize(18).text('Informe de Evaluación de Salud Mental', { align: 'center' });
-      doc.moveDown();
-      doc.fontSize(12).text(`Nombre: ${nombre}`);
-      doc.text(`Edad: ${edad}`);
-      doc.text(`Celular del apoderado: ${celular}`);
-      doc.moveDown();
-
-      doc.text(`🧠 Depresión: ${puntajeDepresion} puntos – ${interpretarDepresion(puntajeDepresion)}`);
-      doc.text(`😟 Ansiedad: ${puntajeAnsiedad} puntos – ${interpretarAnsiedad(puntajeAnsiedad)}`);
-      doc.text(`📚 Estrés Académico: ${puntajeEstres} puntos – ${interpretarEstres(puntajeEstres)}`);
-      doc.text(`💪 Autoestima: ${puntajeAutoestima} puntos – ${interpretarAutoestima(puntajeAutoestima)}`);
-      doc.text(`🚨 Acoso Escolar: ${puntajeBullying} puntos – ${interpretarBullying(puntajeBullying)}`);
-
-      doc.moveDown();
-      doc.font("Helvetica-Bold").text("📝 Diagnóstico general:", { underline: true });
-      doc.font("Helvetica").text(diagnosticoGeneral);
-      doc.moveDown();
-
-      doc.text("Este informe ha sido generado automáticamente por el sistema de evaluación de salud mental. Se recomienda revisar los resultados con un especialista.");
-      doc.end();
-
-      writeStream.on('finish', () => {
-        const dominio = req.headers.host || "localhost:3000";
-        const pdfUrl = `http://${dominio}/pdfs/${encodeURIComponent(nombreArchivo)}_resultado.pdf`;
-
-        res.json({
-          fulfillmentMessages: [
-            {
-              text: {
-                text: [
-                  `📄 Tu informe está listo. Puedes descargarlo desde aquí: ${pdfUrl}`
-                ]
-              }
-            },
-            {
-              text: {
-                text: [
-                  `📌 Diagnóstico general: ${diagnosticoGeneral}`
-                ]
-              }
-            },
-            {
-              text: {
-                text: [
-                  `✨ Gracias por completar el test. Recuerda que estos resultados son orientativos. Si lo necesitas, no dudes en buscar ayuda profesional. ¡Cuida tu salud mental! 💚`
-                ]
-              }
-            }
-          ]
-        });
-      });
-    } catch (error) {
-      console.error("❌ Error al generar el PDF:", error);
-      res.json({
-        fulfillmentText: "⚠️ Ocurrió un error al generar el informe. Intenta nuevamente más tarde."
-      });
+    if (parametroFinal === 'puntaje_depresion') {
+      if (total <= 4) nivel = "Mínima";
+      else if (total <= 9) nivel = "Leve";
+      else if (total <= 14) nivel = "Moderada";
+      else if (total <= 19) nivel = "Moderadamente Severa";
+      else nivel = "Severa";
+      mensaje = `Nivel de depresión: *${nivel}* (Puntaje: ${total})`;
     }
 
-  } else if (intentName === "reiniciar_diagnostico") {
-    res.json({
-      fulfillmentText: "🔄 Has reiniciado el diagnóstico. Comencemos nuevamente con el test de depresión.",
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/contexto_depresion_inicio`,
-          lifespanCount: 1
-        }
-      ]
+    if (parametroFinal === 'puntaje_ansiedad') {
+      if (total <= 4) nivel = "Mínima";
+      else if (total <= 9) nivel = "Leve";
+      else if (total <= 14) nivel = "Moderada";
+      else nivel = "Grave";
+      mensaje = `Nivel de ansiedad: *${nivel}* (Puntaje: ${total})`;
+    }
+
+    if (parametroFinal === 'puntaje_estres') {
+      if (total <= 6) nivel = "Bajo";
+      else if (total <= 12) nivel = "Moderado";
+      else nivel = "Alto";
+      mensaje = `Nivel de estrés académico: *${nivel}* (Puntaje: ${total})`;
+    }
+
+    if (parametroFinal === 'puntaje_autoestima') {
+      if (total <= 6) nivel = "Baja";
+      else if (total <= 12) nivel = "Media";
+      else nivel = "Alta";
+      mensaje = `Nivel de autoestima: *${nivel}* (Puntaje: ${total})`;
+    }
+
+    if (parametroFinal === 'puntaje_acoso') {
+      if (total <= 6) nivel = "Bajo";
+      else if (total <= 12) nivel = "Medio";
+      else nivel = "Alto";
+      mensaje = `Nivel de acoso escolar: *${nivel}* (Puntaje: ${total})`;
+    }
+
+    if (parametroFinal === 'puntaje_social') {
+      if (total <= 6) nivel = "Deficiente";
+      else if (total <= 12) nivel = "Adecuado";
+      else nivel = "Óptimo";
+      mensaje = `Nivel de habilidades sociales: *${nivel}* (Puntaje: ${total})`;
+    }
+
+    if (parametroFinal === 'puntaje_sueno') {
+      if (total <= 6) nivel = "Normal";
+      else if (total <= 12) nivel = "Problemas moderados";
+      else nivel = "Problemas severos";
+      mensaje = `Nivel de trastornos del sueño: *${nivel}* (Puntaje: ${total})`;
+    }
+
+    agent.context.set({
+      name: parametroFinal + '_contexto',
+      lifespan: 20,
+      parameters: { [parametroFinal]: total }
     });
-  } else {
-    res.json({ fulfillmentText: "❓ No entendí tu solicitud. ¿Puedes repetirla?" });
+
+    agent.add(mensaje);
   }
+
+  // Funciones individuales por cada ítem evaluado
+  function resultadoDepresion(agent) {
+    return calcularResultado(agent, [
+      'p1_depresion', 'p2_depresion', 'p3_depresion', 'p4_depresion',
+      'p5_depresion', 'p6_depresion', 'p7_depresion', 'p8_depresion', 'p9_depresion'
+    ], 'puntaje_depresion');
+  }
+
+  function resultadoAnsiedad(agent) {
+    return calcularResultado(agent, [
+      'p1_ansiedad', 'p2_ansiedad', 'p3_ansiedad', 'p4_ansiedad',
+      'p5_ansiedad', 'p6_ansiedad', 'p7_ansiedad'
+    ], 'puntaje_ansiedad');
+  }
+
+  function resultadoEstres(agent) {
+    return calcularResultado(agent, [
+      'p1_estres', 'p2_estres', 'p3_estres',
+      'p4_estres', 'p5_estres', 'p6_estres'
+    ], 'puntaje_estres');
+  }
+
+  function resultadoAutoestima(agent) {
+    return calcularResultado(agent, [
+      'p1_autoestima', 'p2_autoestima', 'p3_autoestima',
+      'p4_autoestima', 'p5_autoestima', 'p6_autoestima'
+    ], 'puntaje_autoestima');
+  }
+
+  function resultadoAcoso(agent) {
+    return calcularResultado(agent, [
+      'p1_acoso', 'p2_acoso', 'p3_acoso',
+      'p4_acoso', 'p5_acoso', 'p6_acoso'
+    ], 'puntaje_acoso');
+  }
+
+  function resultadoHabilidades(agent) {
+    return calcularResultado(agent, [
+      'p1_social', 'p2_social', 'p3_social',
+      'p4_social', 'p5_social', 'p6_social'
+    ], 'puntaje_social');
+  }
+
+  function resultadoSueno(agent) {
+    return calcularResultado(agent, [
+      'p1_sueno', 'p2_sueno', 'p3_sueno',
+      'p4_sueno', 'p5_sueno', 'p6_sueno'
+    ], 'puntaje_sueno');
+  }
+
+  // Función final que resume los resultados de todos los ítems
+  function resumenFinal(agent) {
+    const ctx = agent.contexts;
+
+    const d = ctx.find(c => c.name.endsWith('puntaje_depresion_contexto'))?.parameters?.puntaje_depresion ?? 0;
+    const a = ctx.find(c => c.name.endsWith('puntaje_ansiedad_contexto'))?.parameters?.puntaje_ansiedad ?? 0;
+    const e = ctx.find(c => c.name.endsWith('puntaje_estres_contexto'))?.parameters?.puntaje_estres ?? 0;
+    const au = ctx.find(c => c.name.endsWith('puntaje_autoestima_contexto'))?.parameters?.puntaje_autoestima ?? 0;
+    const ac = ctx.find(c => c.name.endsWith('puntaje_acoso_contexto'))?.parameters?.puntaje_acoso ?? 0;
+    const h = ctx.find(c => c.name.endsWith('puntaje_social_contexto'))?.parameters?.puntaje_social ?? 0;
+    const s = ctx.find(c => c.name.endsWith('puntaje_sueno_contexto'))?.parameters?.puntaje_sueno ?? 0;
+
+    agent.add("📊 *Resumen de resultados de salud mental:*\n");
+    agent.add(`- Depresión: ${d}\n- Ansiedad: ${a}\n- Estrés académico: ${e}`);
+    agent.add(`- Autoestima: ${au}\n- Acoso escolar: ${ac}\n- Habilidades sociales: ${h}\n- Trastornos del sueño: ${s}`);
+    agent.add("\nPuedes mostrar este resultado a tu psicólogo para evaluación más profunda. ¿Deseas un PDF con tu resultado?");
+  }
+
+  // Mapeo de todos los intents
+  let intentMap = new Map();
+  intentMap.set('resultado_depresion', resultadoDepresion);
+  intentMap.set('resultado_ansiedad', resultadoAnsiedad);
+  intentMap.set('resultado_estres_academico', resultadoEstres);
+  intentMap.set('resultado_autoestima', resultadoAutoestima);
+  intentMap.set('resultado_acoso', resultadoAcoso);
+  intentMap.set('resultado_habilidades_sociales', resultadoHabilidades);
+  intentMap.set('resultado_trastorno_sueno', resultadoSueno);
+  intentMap.set('resumen_final_resultados', resumenFinal);
+
+  agent.handleRequest(intentMap);
 });
-
-app.listen(port, () => {
-  console.log(`🚀 Servidor escuchando en el puerto ${port}`);
-});
-
-
-app.listen(port, () => {
-  console.log(`🚀 Servidor corriendo en el puerto ${port}`);
-});
-
