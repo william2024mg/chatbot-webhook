@@ -3,6 +3,11 @@ const PDFDocument = require("pdfkit");
 const path = require("path");
 const express = require("express");
 const bodyParser = require("body-parser");
+const functions = require('firebase-functions');
+const { WebhookClient } = require('dialogflow-fulfillment');
+const { Payload } = require('dialogflow-fulfillment');
+
+process.env.DEBUG = 'dialogflow:debug';
 
 const app = express();
 app.use('/pdfs', express.static(path.join(__dirname, 'pdfs')));
@@ -19,37 +24,9 @@ app.get("/", (req, res) => {
 });
 
 app.post("/webhook", (req, res) => {
-  const body = req.body;
-  const intentName = body.queryResult.intent.displayName;
-  const parameters = body.queryResult.parameters;
-
-  console.log("📥 Webhook recibido:", JSON.stringify(body, null, 2));
-
-  const generarRespuesta = (puntaje, interpretacion, mensajeInicial, contexto) => {
-    const respuesta = `${mensajeInicial} *${puntaje}*. Esto indica *${interpretacion}*\n\n¿Deseas continuar? (Responde: Sí / No)`;
-
-    return res.json({
-      fulfillmentText: respuesta,
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/${contexto}`,
-          lifespanCount: 1
-        }
-      ]
-    });
-  };
-
-  // --- INTENTS DE RESULTADOS INTERMEDIOS ---
-const functions = require('firebase-functions');
-const { WebhookClient } = require('dialogflow-fulfillment');
-const { Payload } = require('dialogflow-fulfillment');
-
-process.env.DEBUG = 'dialogflow:debug';
-
-exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
-  const agent = new WebhookClient({ request, response });
-  console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
-  console.log('Dialogflow Request body: ' + JSON.stringify(request.body));
+  const agent = new WebhookClient({ request: req, response: res });
+  console.log('Dialogflow Request headers: ' + JSON.stringify(req.headers));
+  console.log('Dialogflow Request body: ' + JSON.stringify(req.body));
 
   function obtenerPuntaje(agent, parametros) {
     let puntaje = 0;
@@ -160,75 +137,8 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
   agent.handleRequest(intentMap);
 });
-  
-
-    try {
-      const doc = new PDFDocument();
-      const writeStream = fs.createWriteStream(filePath);
-      doc.pipe(writeStream);
-
-      doc.fontSize(18).text('Informe de Evaluación de Salud Mental', { align: 'center' });
-      doc.moveDown();
-      doc.fontSize(12).text(`Nombre: ${nombre}`);
-      doc.text(`Edad: ${edad}`);
-      doc.text(`Celular del apoderado: ${celular}`);
-      doc.moveDown();
-
-      doc.text(`🧠 Depresión: ${puntajeDepresion} puntos – ${interpretar.depresion(puntajeDepresion)}`);
-      doc.text(`😟 Ansiedad: ${puntajeAnsiedad} puntos – ${interpretar.ansiedad(puntajeAnsiedad)}`);
-      doc.text(`📚 Estrés Académico: ${puntajeEstres} puntos – ${interpretar.estres(puntajeEstres)}`);
-      doc.text(`💪 Autoestima: ${puntajeAutoestima} puntos – ${interpretar.autoestima(puntajeAutoestima)}`);
-      doc.text(`🚨 Acoso Escolar: ${puntajeBullying} puntos – ${interpretar.bullying(puntajeBullying)}`);
-
-      doc.moveDown();
-      doc.font("Helvetica-Bold").text("📝 Diagnóstico general:", { underline: true });
-      doc.font("Helvetica").text(diagnosticoGeneral);
-      doc.moveDown();
-
-      doc.text("Este informe ha sido generado automáticamente por el sistema de evaluación de salud mental. Se recomienda revisar los resultados con un especialista.");
-      doc.end();
-
-      writeStream.on("finish", () => {
-        const dominio = req.headers.host || "localhost:3000";
-        const pdfUrl = `http://${dominio}/pdfs/${encodeURIComponent(nombreArchivo)}_resultado.pdf`;
-
-        res.json({
-          fulfillmentMessages: [
-            {
-              text: { text: [`📄 Tu informe está listo. Puedes descargarlo desde aquí: ${pdfUrl}`] }
-            },
-            {
-              text: { text: [`📌 Diagnóstico general: ${diagnosticoGeneral}`] }
-            },
-            {
-              text: { text: [`✨ Gracias por completar el test. Recuerda que estos resultados son orientativos. Si lo necesitas, no dudes en buscar ayuda profesional. ¡Cuida tu salud mental! 💚`] }
-            }
-          ]
-        });
-      });
-    } catch (error) {
-      console.error("❌ Error al generar el PDF:", error);
-      res.json({ fulfillmentText: "⚠️ Ocurrió un error al generar el informe. Intenta nuevamente más tarde." });
-    }
-
-  } else if (intentName === "reiniciar_diagnostico") {
-    res.json({
-      fulfillmentText: "🔄 Has reiniciado el diagnóstico. Comencemos nuevamente con el test de depresión.",
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/contexto_depresion_inicio`,
-          lifespanCount: 1
-        }
-      ]
-    });
-
-  } else {
-    res.json({ fulfillmentText: "❓ No entendí tu solicitud. ¿Puedes repetirla?" });
-  }
-});
 
 // 🟢 INICIO DEL SERVIDOR
 app.listen(port, () => {
   console.log(`🚀 Servidor escuchando en http://localhost:${port}`);
 });
-
