@@ -40,82 +40,48 @@ app.post("/webhook", (req, res) => {
   };
 
   // --- INTENTS DE RESULTADOS INTERMEDIOS ---
-const functions = require("firebase-functions");
-const { WebhookClient } = require("dialogflow-fulfillment");
+const functions = require('firebase-functions');
+const { WebhookClient } = require('dialogflow-fulfillment');
+const { Payload } = require('dialogflow-fulfillment');
+
+process.env.DEBUG = 'dialogflow:debug';
 
 exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
   const agent = new WebhookClient({ request, response });
+  console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
+  console.log('Dialogflow Request body: ' + JSON.stringify(request.body));
 
-  // Función genérica para calcular resultados por ítem
-  function calcularResultado(agent, preguntas, parametroFinal) {
-    let total = 0;
-    preguntas.forEach(p => {
-      const valor = parseInt(agent.parameters[p]);
-      if (!isNaN(valor)) total += valor;
-    });
-
-    let nivel = "No evaluado";
-    let mensaje = "";
-
-    if (parametroFinal === 'puntaje_depresion') {
-      if (total <= 4) nivel = "Mínima";
-      else if (total <= 9) nivel = "Leve";
-      else if (total <= 14) nivel = "Moderada";
-      else if (total <= 19) nivel = "Moderadamente Severa";
-      else nivel = "Severa";
-      mensaje = `Nivel de depresión: *${nivel}* (Puntaje: ${total})`;
+  function obtenerPuntaje(agent, parametros) {
+    let puntaje = 0;
+    for (let i = 0; i < parametros.length; i++) {
+      const valor = parseInt(agent.parameters[parametros[i]]);
+      if (!isNaN(valor)) {
+        puntaje += valor;
+      }
     }
-
-    if (parametroFinal === 'puntaje_ansiedad') {
-      if (total <= 4) nivel = "Mínima";
-      else if (total <= 9) nivel = "Leve";
-      else if (total <= 14) nivel = "Moderada";
-      else nivel = "Grave";
-      mensaje = `Nivel de ansiedad: *${nivel}* (Puntaje: ${total})`;
-    }
-
-    if (parametroFinal === 'puntaje_estres') {
-      if (total <= 6) nivel = "Bajo";
-      else if (total <= 12) nivel = "Moderado";
-      else nivel = "Alto";
-      mensaje = `Nivel de estrés académico: *${nivel}* (Puntaje: ${total})`;
-    }
-
-    if (parametroFinal === 'puntaje_autoestima') {
-      if (total <= 6) nivel = "Baja";
-      else if (total <= 12) nivel = "Media";
-      else nivel = "Alta";
-      mensaje = `Nivel de autoestima: *${nivel}* (Puntaje: ${total})`;
-    }
-
-    if (parametroFinal === 'puntaje_acoso') {
-      if (total <= 6) nivel = "Bajo";
-      else if (total <= 12) nivel = "Medio";
-      else nivel = "Alto";
-      mensaje = `Nivel de acoso escolar: *${nivel}* (Puntaje: ${total})`;
-    }
-
-    agent.context.set({
-      name: parametroFinal + '_contexto',
-      lifespan: 20,
-      parameters: { [parametroFinal]: total }
-    });
-
-    agent.add(mensaje);
+    return puntaje;
   }
 
-  // Funciones individuales por cada ítem evaluado
+  function calcularResultado(agent, parametros, nombrePuntaje) {
+    const puntaje = obtenerPuntaje(agent, parametros);
+    agent.context.set({ name: 'contexto_' + nombrePuntaje, lifespan: 50, parameters: { [nombrePuntaje]: puntaje } });
+    agent.add(`Tu puntaje en este módulo es: ${puntaje}`);
+    return agent;
+  }
+
   function resultadoDepresion(agent) {
     return calcularResultado(agent, [
-      'p1_depresion', 'p2_depresion', 'p3_depresion', 'p4_depresion',
-      'p5_depresion', 'p6_depresion', 'p7_depresion', 'p8_depresion', 'p9_depresion'
+      'p1_depresion', 'p2_depresion', 'p3_depresion',
+      'p4_depresion', 'p5_depresion', 'p6_depresion',
+      'p7_depresion', 'p8_depresion', 'p9_depresion'
     ], 'puntaje_depresion');
   }
 
   function resultadoAnsiedad(agent) {
     return calcularResultado(agent, [
-      'p1_ansiedad', 'p2_ansiedad', 'p3_ansiedad', 'p4_ansiedad',
-      'p5_ansiedad', 'p6_ansiedad', 'p7_ansiedad'
+      'p1_ansiedad', 'p2_ansiedad', 'p3_ansiedad',
+      'p4_ansiedad', 'p5_ansiedad', 'p6_ansiedad',
+      'p7_ansiedad'
     ], 'puntaje_ansiedad');
   }
 
@@ -133,6 +99,20 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     ], 'puntaje_autoestima');
   }
 
+  function resultadoHabilidades(agent) {
+    return calcularResultado(agent, [
+      'p1_habilidades', 'p2_habilidades', 'p3_habilidades',
+      'p4_habilidades', 'p5_habilidades', 'p6_habilidades'
+    ], 'puntaje_habilidades');
+  }
+
+  function resultadoSueno(agent) {
+    return calcularResultado(agent, [
+      'p1_sueno', 'p2_sueno', 'p3_sueno',
+      'p4_sueno', 'p5_sueno', 'p6_sueno'
+    ], 'puntaje_sueno');
+  }
+
   function resultadoAcoso(agent) {
     return calcularResultado(agent, [
       'p1_acoso', 'p2_acoso', 'p3_acoso',
@@ -140,28 +120,41 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     ], 'puntaje_acoso');
   }
 
-  // Función final que resume los resultados de los 5 ítems activos
   function resumenFinal(agent) {
-    const ctx = agent.contexts;
+    const contextos = [
+      'contexto_puntaje_depresion',
+      'contexto_puntaje_ansiedad',
+      'contexto_puntaje_estres',
+      'contexto_puntaje_autoestima',
+      'contexto_puntaje_habilidades',
+      'contexto_puntaje_sueno',
+      'contexto_puntaje_acoso'
+    ];
 
-    const d = ctx.find(c => c.name.endsWith('puntaje_depresion_contexto'))?.parameters?.puntaje_depresion ?? 0;
-    const a = ctx.find(c => c.name.endsWith('puntaje_ansiedad_contexto'))?.parameters?.puntaje_ansiedad ?? 0;
-    const e = ctx.find(c => c.name.endsWith('puntaje_estres_contexto'))?.parameters?.puntaje_estres ?? 0;
-    const au = ctx.find(c => c.name.endsWith('puntaje_autoestima_contexto'))?.parameters?.puntaje_autoestima ?? 0;
-    const ac = ctx.find(c => c.name.endsWith('puntaje_acoso_contexto'))?.parameters?.puntaje_acoso ?? 0;
+    const resultados = {};
+    for (const contexto of contextos) {
+      const ctx = agent.context.get(contexto);
+      if (ctx && ctx.parameters) {
+        const nombrePuntaje = Object.keys(ctx.parameters)[0];
+        resultados[nombrePuntaje] = ctx.parameters[nombrePuntaje];
+      }
+    }
 
-    agent.add("📊 *Resumen de resultados de salud mental:*\n");
-    agent.add(`- Depresión: ${d}\n- Ansiedad: ${a}\n- Estrés académico: ${e}`);
-    agent.add(`- Autoestima: ${au}\n- Acoso escolar: ${ac}`);
-    agent.add("\nPuedes mostrar este resultado a tu psicólogo para evaluación más profunda. ¿Deseas un PDF con tu resultado?");
+    let mensaje = '**Resumen de resultados:**\n';
+    for (const clave in resultados) {
+      mensaje += `- ${clave.replace('puntaje_', '')}: ${resultados[clave]}\n`;
+    }
+
+    agent.add(mensaje);
   }
 
-  // Mapeo de intents
   let intentMap = new Map();
   intentMap.set('resultado_depresion', resultadoDepresion);
   intentMap.set('resultado_ansiedad', resultadoAnsiedad);
-  intentMap.set('resultado_estres_academico', resultadoEstres);
+  intentMap.set('resultado_estres', resultadoEstres);
   intentMap.set('resultado_autoestima', resultadoAutoestima);
+  intentMap.set('resultado_habilidades', resultadoHabilidades);
+  intentMap.set('resultado_sueno', resultadoSueno);
   intentMap.set('resultado_acoso', resultadoAcoso);
   intentMap.set('resumen_final_resultados', resumenFinal);
 
