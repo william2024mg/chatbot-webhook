@@ -9,8 +9,6 @@ app.use(bodyParser.json());
 
 app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
-  console.log('Dialogflow Request headers: ' + JSON.stringify(req.headers));
-  console.log('Dialogflow Request body: ' + JSON.stringify(req.body));
 
   function obtenerPuntaje(agent, parametros) {
     let puntaje = 0;
@@ -25,7 +23,11 @@ app.post('/webhook', (req, res) => {
 
   function calcularResultado(agent, parametros, nombrePuntaje) {
     const puntaje = obtenerPuntaje(agent, parametros);
-    agent.context.set({ name: 'contexto_' + nombrePuntaje, lifespan: 50, parameters: { [nombrePuntaje]: puntaje } });
+    agent.context.set({
+      name: 'contexto_' + nombrePuntaje,
+      lifespan: 50,
+      parameters: { [nombrePuntaje]: puntaje }
+    });
     agent.add(`Tu puntaje en este módulo es: ${puntaje}`);
     return agent;
   }
@@ -82,6 +84,16 @@ app.post('/webhook', (req, res) => {
   }
 
   function resumenFinal(agent) {
+    const etiquetas = {
+      puntaje_depresion: "Depresión",
+      puntaje_ansiedad: "Ansiedad",
+      puntaje_estres: "Estrés académico",
+      puntaje_autoestima: "Autoestima",
+      puntaje_habilidades: "Habilidades sociales",
+      puntaje_sueno: "Trastornos del sueño",
+      puntaje_acoso: "Acoso escolar"
+    };
+
     const contextos = [
       'contexto_puntaje_depresion',
       'contexto_puntaje_ansiedad',
@@ -92,20 +104,21 @@ app.post('/webhook', (req, res) => {
       'contexto_puntaje_acoso'
     ];
 
-    const resultados = {};
+    let mensaje = `📝 *Resumen de resultados del alumno:*\n\n`;
+
     for (const contexto of contextos) {
       const ctx = agent.context.get(contexto);
       if (ctx && ctx.parameters) {
-        const nombrePuntaje = Object.keys(ctx.parameters)[0];
-        resultados[nombrePuntaje] = ctx.parameters[nombrePuntaje];
+        const clave = Object.keys(ctx.parameters)[0]; // Ej: puntaje_depresion
+        const valor = ctx.parameters[clave];
+        const etiqueta = etiquetas[clave] || clave;
+        mensaje += `• ${etiqueta}: ${valor}\n`;
+      } else {
+        mensaje += `• ${etiqueta}: resultado no disponible\n`;
       }
     }
 
-    let mensaje = '**Resumen de resultados:**\n';
-    for (const clave in resultados) {
-      mensaje += `- ${clave.replace('puntaje_', '')}: ${resultados[clave]}\n`;
-    }
-
+    mensaje += `\n💡 Este resumen puede ser evaluado por un especialista para brindarte orientación adecuada.`;
     agent.add(mensaje);
   }
 
@@ -125,4 +138,5 @@ app.post('/webhook', (req, res) => {
 app.listen(port, () => {
   console.log(`Servidor webhook escuchando en el puerto ${port}`);
 });
+
 
