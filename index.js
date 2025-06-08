@@ -1,202 +1,128 @@
-const fs = require("fs");
-const PDFDocument = require("pdfkit");
-const path = require("path");
-const express = require("express");
-const bodyParser = require("body-parser");
+const express = require('express');
+const bodyParser = require('body-parser');
+const { WebhookClient } = require('dialogflow-fulfillment');
 
 const app = express();
-app.use('/pdfs', express.static(path.join(__dirname, 'pdfs')));
 const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
-if (!fs.existsSync("pdfs")) {
-  fs.mkdirSync("pdfs");
-}
+app.post('/webhook', (req, res) => {
+  const agent = new WebhookClient({ request: req, response: res });
+  console.log('Dialogflow Request headers: ' + JSON.stringify(req.headers));
+  console.log('Dialogflow Request body: ' + JSON.stringify(req.body));
 
-app.get("/", (req, res) => {
-  res.send("✅ Servidor de Chatbot activo");
-});
+  function obtenerPuntaje(agent, parametros) {
+    let puntaje = 0;
+    for (let i = 0; i < parametros.length; i++) {
+      const valor = parseInt(agent.parameters[parametros[i]]);
+      if (!isNaN(valor)) {
+        puntaje += valor;
+      }
+    }
+    return puntaje;
+  }
 
-app.post("/webhook", (req, res) => {
-  const body = req.body;
-  const intentName = body.queryResult.intent.displayName;
-  const parameters = body.queryResult.parameters;
+  function calcularResultado(agent, parametros, nombrePuntaje) {
+    const puntaje = obtenerPuntaje(agent, parametros);
+    agent.context.set({ name: 'contexto_' + nombrePuntaje, lifespan: 50, parameters: { [nombrePuntaje]: puntaje } });
+    agent.add(`Tu puntaje en este módulo es: ${puntaje}`);
+    return agent;
+  }
 
-  console.log("📥 Webhook recibido:", JSON.stringify(body, null, 2));
+  function resultadoDepresion(agent) {
+    return calcularResultado(agent, [
+      'p1_depresion', 'p2_depresion', 'p3_depresion',
+      'p4_depresion', 'p5_depresion', 'p6_depresion',
+      'p7_depresion', 'p8_depresion', 'p9_depresion'
+    ], 'puntaje_depresion');
+  }
 
-  const generarRespuesta = (puntaje, interpretacion, mensajeInicial, contexto) => {
-    const respuesta = `${mensajeInicial} *${puntaje}*. Esto indica *${interpretacion}*\n\n¿Deseas continuar? (Responde: Sí / No)`;
+  function resultadoAnsiedad(agent) {
+    return calcularResultado(agent, [
+      'p1_ansiedad', 'p2_ansiedad', 'p3_ansiedad',
+      'p4_ansiedad', 'p5_ansiedad', 'p6_ansiedad',
+      'p7_ansiedad'
+    ], 'puntaje_ansiedad');
+  }
 
-    return res.json({
-      fulfillmentText: respuesta,
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/${contexto}`,
-          lifespanCount: 1
-        }
-      ]
-    });
-  };
+  function resultadoEstres(agent) {
+    return calcularResultado(agent, [
+      'p1_estres', 'p2_estres', 'p3_estres',
+      'p4_estres', 'p5_estres', 'p6_estres'
+    ], 'puntaje_estres');
+  }
 
-  // --- INTENTS DE RESULTADOS INTERMEDIOS ---
+  function resultadoAutoestima(agent) {
+    return calcularResultado(agent, [
+      'p1_autoestima', 'p2_autoestima', 'p3_autoestima',
+      'p4_autoestima', 'p5_autoestima', 'p6_autoestima'
+    ], 'puntaje_autoestima');
+  }
 
-  if (intentName === "resultado_depresion") {
-    const puntaje = parameters["puntaje_depresion"];
-    let interpretacion = "";
+  function resultadoHabilidades(agent) {
+    return calcularResultado(agent, [
+      'p1_habilidades', 'p2_habilidades', 'p3_habilidades',
+      'p4_habilidades', 'p5_habilidades', 'p6_habilidades'
+    ], 'puntaje_habilidades');
+  }
 
-    if (puntaje <= 4) interpretacion = "sin síntomas de depresión.";
-    else if (puntaje <= 9) interpretacion = "síntomas leves de depresión.";
-    else if (puntaje <= 14) interpretacion = "síntomas moderados de depresión.";
-    else if (puntaje <= 19) interpretacion = "síntomas moderadamente severos de depresión.";
-    else interpretacion = "síntomas severos de depresión.";
+  function resultadoSueno(agent) {
+    return calcularResultado(agent, [
+      'p1_sueno', 'p2_sueno', 'p3_sueno',
+      'p4_sueno', 'p5_sueno', 'p6_sueno'
+    ], 'puntaje_sueno');
+  }
 
-    return generarRespuesta(puntaje, interpretacion, "🧠 Tu puntaje en el test de depresión fue", "contexto_ansiedad_inicio");
+  function resultadoAcoso(agent) {
+    return calcularResultado(agent, [
+      'p1_acoso', 'p2_acoso', 'p3_acoso',
+      'p4_acoso', 'p5_acoso', 'p6_acoso'
+    ], 'puntaje_acoso');
+  }
 
-  } else if (intentName === "resultado_ansiedad") {
-    const puntaje = parameters["puntaje_ansiedad"];
-    let interpretacion = "";
+  function resumenFinal(agent) {
+    const contextos = [
+      'contexto_puntaje_depresion',
+      'contexto_puntaje_ansiedad',
+      'contexto_puntaje_estres',
+      'contexto_puntaje_autoestima',
+      'contexto_puntaje_habilidades',
+      'contexto_puntaje_sueno',
+      'contexto_puntaje_acoso'
+    ];
 
-    if (puntaje <= 4) interpretacion = "ansiedad mínima.";
-    else if (puntaje <= 9) interpretacion = "ansiedad leve.";
-    else if (puntaje <= 14) interpretacion = "ansiedad moderada.";
-    else interpretacion = "ansiedad severa.";
-
-    return generarRespuesta(puntaje, interpretacion, "😟 Tu puntaje en el test de ansiedad fue", "contexto_estres_inicio");
-
-  } else if (intentName === "resultado_estres") {
-    const puntaje = parameters["puntaje_estres"];
-    let interpretacion = "";
-
-    if (puntaje <= 5) interpretacion = "muy bajo estrés académico.";
-    else if (puntaje <= 10) interpretacion = "bajo estrés académico.";
-    else if (puntaje <= 15) interpretacion = "estrés académico moderado.";
-    else interpretacion = "alto nivel de estrés académico.";
-
-    return generarRespuesta(puntaje, interpretacion, "📚 Tu puntaje en estrés académico fue", "contexto_autoestima_inicio");
-
-  } else if (intentName === "resultado_autoestima") {
-    const puntaje = parameters["puntaje_autoestima"];
-    let interpretacion = "";
-
-    if (puntaje <= 5) interpretacion = "muy baja autoestima.";
-    else if (puntaje <= 10) interpretacion = "baja autoestima.";
-    else if (puntaje <= 15) interpretacion = "autoestima moderada.";
-    else interpretacion = "alta autoestima.";
-
-    return generarRespuesta(puntaje, interpretacion, "💪 Tu puntaje en autoestima fue", "contexto_bullying_inicio");
-
-  } else if (intentName === "resultado_bullying") {
-    const puntaje = parameters["puntaje_bullying"];
-    let interpretacion = "";
-
-    if (puntaje <= 5) interpretacion = "no presenta indicios de acoso escolar.";
-    else if (puntaje <= 10) interpretacion = "posible presencia leve de bullying.";
-    else if (puntaje <= 15) interpretacion = "probables síntomas de acoso escolar.";
-    else interpretacion = "alto riesgo de acoso escolar.";
-
-    return generarRespuesta(puntaje, interpretacion, "🚨 Tu puntaje en bullying fue", "contexto_resumen_inicio");
-
-  } else if (intentName === "resumen_final_resultados") {
-    // --- Parámetros recibidos ---
-    const nombre = parameters.nombre || 'Estudiante';
-    const edad = parameters.edad || 'No especificada';
-    const celular = parameters.celular_apoderado || 'No especificado';
-    const puntajeDepresion = parameters.puntaje_depresion || 0;
-    const puntajeAnsiedad = parameters.puntaje_ansiedad || 0;
-    const puntajeEstres = parameters.puntaje_estres || 0;
-    const puntajeAutoestima = parameters.puntaje_autoestima || 0;
-    const puntajeBullying = parameters.puntaje_bullying || 0;
-
-    const interpretar = {
-      depresion: (p) => p <= 4 ? "Sin síntomas" : p <= 9 ? "Leve" : p <= 14 ? "Moderado" : p <= 19 ? "Moderadamente severo" : "Severo",
-      ansiedad: (p) => p <= 4 ? "Mínima" : p <= 9 ? "Leve" : p <= 14 ? "Moderada" : "Severa",
-      estres: (p) => p <= 5 ? "Muy bajo" : p <= 10 ? "Bajo" : p <= 15 ? "Moderado" : "Alto",
-      autoestima: (p) => p <= 5 ? "Muy baja" : p <= 10 ? "Baja" : p <= 15 ? "Moderada" : "Alta",
-      bullying: (p) => p <= 5 ? "Sin indicios" : p <= 10 ? "Leve" : p <= 15 ? "Probable" : "Alto riesgo"
-    };
-
-    let riesgos = [];
-    if (puntajeDepresion > 14) riesgos.push("depresión");
-    if (puntajeAnsiedad > 14) riesgos.push("ansiedad");
-    if (puntajeEstres > 15) riesgos.push("estrés académico");
-    if (puntajeAutoestima <= 5) riesgos.push("muy baja autoestima");
-    if (puntajeBullying > 10) riesgos.push("acoso escolar");
-
-    let diagnosticoGeneral = riesgos.length > 0
-      ? `⚠️ El estudiante presenta posibles indicios de: ${riesgos.join(", ")}.`
-      : "✅ El estudiante no presenta indicios relevantes de alteración en su salud mental.";
-
-    const nombreArchivo = nombre.trim().replace(/[^a-zA-Z0-9_]/g, '_') || 'Estudiante';
-    const filePath = `pdfs/${nombreArchivo}_resultado.pdf`;
-
-    try {
-      const doc = new PDFDocument();
-      const writeStream = fs.createWriteStream(filePath);
-      doc.pipe(writeStream);
-
-      doc.fontSize(18).text('Informe de Evaluación de Salud Mental', { align: 'center' });
-      doc.moveDown();
-      doc.fontSize(12).text(`Nombre: ${nombre}`);
-      doc.text(`Edad: ${edad}`);
-      doc.text(`Celular del apoderado: ${celular}`);
-      doc.moveDown();
-
-      doc.text(`🧠 Depresión: ${puntajeDepresion} puntos – ${interpretar.depresion(puntajeDepresion)}`);
-      doc.text(`😟 Ansiedad: ${puntajeAnsiedad} puntos – ${interpretar.ansiedad(puntajeAnsiedad)}`);
-      doc.text(`📚 Estrés Académico: ${puntajeEstres} puntos – ${interpretar.estres(puntajeEstres)}`);
-      doc.text(`💪 Autoestima: ${puntajeAutoestima} puntos – ${interpretar.autoestima(puntajeAutoestima)}`);
-      doc.text(`🚨 Acoso Escolar: ${puntajeBullying} puntos – ${interpretar.bullying(puntajeBullying)}`);
-
-      doc.moveDown();
-      doc.font("Helvetica-Bold").text("📝 Diagnóstico general:", { underline: true });
-      doc.font("Helvetica").text(diagnosticoGeneral);
-      doc.moveDown();
-
-      doc.text("Este informe ha sido generado automáticamente por el sistema de evaluación de salud mental. Se recomienda revisar los resultados con un especialista.");
-      doc.end();
-
-      writeStream.on("finish", () => {
-        const dominio = req.headers.host || "localhost:3000";
-        const pdfUrl = `http://${dominio}/pdfs/${encodeURIComponent(nombreArchivo)}_resultado.pdf`;
-
-        res.json({
-          fulfillmentMessages: [
-            {
-              text: { text: [`📄 Tu informe está listo. Puedes descargarlo desde aquí: ${pdfUrl}`] }
-            },
-            {
-              text: { text: [`📌 Diagnóstico general: ${diagnosticoGeneral}`] }
-            },
-            {
-              text: { text: [`✨ Gracias por completar el test. Recuerda que estos resultados son orientativos. Si lo necesitas, no dudes en buscar ayuda profesional. ¡Cuida tu salud mental! 💚`] }
-            }
-          ]
-        });
-      });
-    } catch (error) {
-      console.error("❌ Error al generar el PDF:", error);
-      res.json({ fulfillmentText: "⚠️ Ocurrió un error al generar el informe. Intenta nuevamente más tarde." });
+    const resultados = {};
+    for (const contexto of contextos) {
+      const ctx = agent.context.get(contexto);
+      if (ctx && ctx.parameters) {
+        const nombrePuntaje = Object.keys(ctx.parameters)[0];
+        resultados[nombrePuntaje] = ctx.parameters[nombrePuntaje];
+      }
     }
 
-  } else if (intentName === "reiniciar_diagnostico") {
-    res.json({
-      fulfillmentText: "🔄 Has reiniciado el diagnóstico. Comencemos nuevamente con el test de depresión.",
-      outputContexts: [
-        {
-          name: `${body.session}/contexts/contexto_depresion_inicio`,
-          lifespanCount: 1
-        }
-      ]
-    });
+    let mensaje = '**Resumen de resultados:**\n';
+    for (const clave in resultados) {
+      mensaje += `- ${clave.replace('puntaje_', '')}: ${resultados[clave]}\n`;
+    }
 
-  } else {
-    res.json({ fulfillmentText: "❓ No entendí tu solicitud. ¿Puedes repetirla?" });
+    agent.add(mensaje);
   }
+
+  let intentMap = new Map();
+  intentMap.set('resultado_depresion', resultadoDepresion);
+  intentMap.set('resultado_ansiedad', resultadoAnsiedad);
+  intentMap.set('resultado_estres', resultadoEstres);
+  intentMap.set('resultado_autoestima', resultadoAutoestima);
+  intentMap.set('resultado_habilidades', resultadoHabilidades);
+  intentMap.set('resultado_sueno', resultadoSueno);
+  intentMap.set('resultado_acoso', resultadoAcoso);
+  intentMap.set('resumen_final_resultados', resumenFinal);
+
+  agent.handleRequest(intentMap);
 });
 
-// 🟢 INICIO DEL SERVIDOR
 app.listen(port, () => {
-  console.log(`🚀 Servidor escuchando en http://localhost:${port}`);
+  console.log(`Servidor webhook escuchando en el puerto ${port}`);
 });
 
