@@ -104,6 +104,21 @@ app.post('/webhook', (req, res) => {
       'contexto_puntaje_acoso'
     ];
 
+let interpretacion = obtenerInterpretacion(puntaje, nombrePuntaje);
+    function obtenerInterpretacion(puntaje, tipo) {
+  if (tipo === 'puntaje_ansiedad') {
+    if (puntaje <= 4) return 'Esto indica un nivel mínimo de ansiedad.';
+    if (puntaje <= 9) return 'Esto indica un nivel leve de ansiedad.';
+    if (puntaje <= 14) return 'Esto indica un nivel moderado de ansiedad.';
+    return 'Esto indica un nivel severo de ansiedad.';
+  }
+  return '';
+}
+
+agent.add(`✅ Tu puntaje en este módulo es: ${puntaje}.\n${interpretacion}`);
+
+
+    
     let mensaje = `📝 *Resumen de resultados del alumno:*\n\n`;
 
     for (const contexto of contextos) {
