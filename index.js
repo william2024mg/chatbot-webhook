@@ -41,11 +41,28 @@ app.post('/webhook', (req, res) => {
   }
 
   function resultadoAnsiedad(agent) {
-    return calcularResultado(agent, [
+    const parametros = [
       'p1_ansiedad', 'p2_ansiedad', 'p3_ansiedad',
       'p4_ansiedad', 'p5_ansiedad', 'p6_ansiedad',
       'p7_ansiedad'
-    ], 'puntaje_ansiedad');
+    ];
+    const puntaje = obtenerPuntaje(agent, parametros);
+
+    // Guardar el puntaje en el contexto
+    agent.context.set({
+      name: 'contexto_puntaje_ansiedad',
+      lifespan: 50,
+      parameters: { puntaje_ansiedad: puntaje }
+    });
+
+    // Interpretación
+    let interpretacion = '';
+    if (puntaje <= 4) interpretacion = 'Esto indica un nivel mínimo de ansiedad.';
+    else if (puntaje <= 9) interpretacion = 'Esto indica un nivel leve de ansiedad.';
+    else if (puntaje <= 14) interpretacion = 'Esto indica un nivel moderado de ansiedad.';
+    else interpretacion = 'Esto indica un nivel severo de ansiedad.';
+
+    agent.add(`✅ Tu puntaje en este módulo es: ${puntaje}.\n${interpretacion}`);
   }
 
   function resultadoEstres(agent) {
@@ -104,21 +121,6 @@ app.post('/webhook', (req, res) => {
       'contexto_puntaje_acoso'
     ];
 
-let interpretacion = obtenerInterpretacion(puntaje, nombrePuntaje);
-    function obtenerInterpretacion(puntaje, tipo) {
-  if (tipo === 'puntaje_ansiedad') {
-    if (puntaje <= 4) return 'Esto indica un nivel mínimo de ansiedad.';
-    if (puntaje <= 9) return 'Esto indica un nivel leve de ansiedad.';
-    if (puntaje <= 14) return 'Esto indica un nivel moderado de ansiedad.';
-    return 'Esto indica un nivel severo de ansiedad.';
-  }
-  return '';
-}
-
-agent.add(`✅ Tu puntaje en este módulo es: ${puntaje}.\n${interpretacion}`);
-
-
-    
     let mensaje = `📝 *Resumen de resultados del alumno:*\n\n`;
 
     for (const contexto of contextos) {
@@ -129,6 +131,8 @@ agent.add(`✅ Tu puntaje en este módulo es: ${puntaje}.\n${interpretacion}`);
         const etiqueta = etiquetas[clave] || clave;
         mensaje += `• ${etiqueta}: ${valor}\n`;
       } else {
+        const clave = contexto.replace('contexto_', '');
+        const etiqueta = etiquetas[clave] || clave;
         mensaje += `• ${etiqueta}: resultado no disponible\n`;
       }
     }
@@ -153,5 +157,6 @@ agent.add(`✅ Tu puntaje en este módulo es: ${puntaje}.\n${interpretacion}`);
 app.listen(port, () => {
   console.log(`Servidor webhook escuchando en el puerto ${port}`);
 });
+
 
 
