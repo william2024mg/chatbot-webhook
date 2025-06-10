@@ -56,17 +56,18 @@ function resultadoAnsiedad(agent) {
   });
 
   // Obtener valores desde el contexto
- function obtenerPuntaje(agent) {
-  const p1 = agent.parameters.p1_ansiedad || 0;
-  const p2 = agent.parameters.p2_ansiedad || 0;
-  const p3 = agent.parameters.p3_ansiedad || 0;
-  const p4 = agent.parameters.p4_ansiedad || 0;
-  const p5 = agent.parameters.p5_ansiedad || 0;
-  const p6 = agent.parameters.p6_ansiedad || 0;
-  const p7 = agent.parameters.p7_ansiedad || 0;
+  function obtenerPuntaje(agent) {
+    const p1 = agent.parameters.p1_ansiedad || 0;
+    const p2 = agent.parameters.p2_ansiedad || 0;
+    const p3 = agent.parameters.p3_ansiedad || 0;
+    const p4 = agent.parameters.p4_ansiedad || 0;
+    const p5 = agent.parameters.p5_ansiedad || 0;
+    const p6 = agent.parameters.p6_ansiedad || 0;
+    const p7 = agent.parameters.p7_ansiedad || 0;
 
-  const puntaje = p1 + p2 + p3 + p4 + p5 + p6 + p7;
-  return puntaje;
+    const puntaje = p1 + p2 + p3 + p4 + p5 + p6 + p7;
+    return puntaje;
+  }
 }
 
 function puntajeAnsiedad(agent) {
@@ -87,11 +88,34 @@ function puntajeAnsiedad(agent) {
     else return 'severo';
   })();
 
-  // Construir y enviar el mensaje
-  const mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}.`;
+  // Crear respuestas personalizadas para cada nivel de ansiedad
+  let mensaje;
+  switch (nivel) {
+    case 'mínimo':
+      mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}. Esto indica que tu nivel de ansiedad es mínimo.`;
+      break;
+    case 'leve':
+      mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}. Esto indica que tu nivel de ansiedad es leve.`;
+      break;
+    case 'moderado':
+      mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}. Esto indica que tu nivel de ansiedad es moderado.`;
+      break;
+    case 'severo':
+      mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}. Esto indica que tu nivel de ansiedad es severo.`;
+      break;
+  }
+
+  // Enviar el mensaje
   agent.add(mensaje);
 }
-}
+
+// Llamar al intent puntaje_ansiedad
+agent.handleRequest(async (agent) => {
+  // Lógica previa
+  await resultadoAnsiedad(agent);
+  await agent.add('Ahora vamos a calcular tu puntaje de ansiedad.');
+  await agent.intent('puntaje_ansiedad');
+});
   function resultadoEstres(agent) {
     return calcularResultado(agent, [
       'p1_estres', 'p2_estres', 'p3_estres',
