@@ -54,7 +54,18 @@ app.post('/webhook', (req, res) => {
       lifespan: 50,
       parameters: { puntaje_ansiedad: puntaje }
     });
+// Obtener valores desde el contexto
+  const context = agent.context.get('contexto_puntaje_ansiedad');
+  
+  const p1 = context.parameters.p1_ansiedad || 0;
+  const p2 = context.parameters.p2_ansiedad || 0;
+  const p3 = context.parameters.p3_ansiedad || 0;
+  const p4 = context.parameters.p4_ansiedad || 0;
+  const p5 = context.parameters.p5_ansiedad || 0;
+  const p6 = context.parameters.p6_ansiedad || 0;
+  const p7 = context.parameters.p7_ansiedad || 0;
 
+  const puntaje = p1 + p2 + p3 + p4 + p5 + p6 + p7;
     // Interpretación
     let interpretacion = '';
     if (puntaje <= 4) interpretacion = 'Esto indica un nivel mínimo de ansiedad.';
@@ -62,7 +73,10 @@ app.post('/webhook', (req, res) => {
     else if (puntaje <= 14) interpretacion = 'Esto indica un nivel moderado de ansiedad.';
     else interpretacion = 'Esto indica un nivel severo de ansiedad.';
 
-    agent.add(`✅ Tu puntaje en este módulo es: ${puntaje}.\n${interpretacion}`);
+    // Mensaje para el estudiante
+  const mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}.`;
+
+  agent.add(mensaje);
   }
 
   function resultadoEstres(agent) {
