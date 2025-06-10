@@ -56,31 +56,41 @@ function resultadoAnsiedad(agent) {
   });
 
   // Obtener valores desde el contexto
-  const context = agent.context.get('contexto_puntaje_ansiedad');
-  const [p1, p2, p3, p4, p5, p6, p7] = [
-    context.parameters.p1_ansiedad || 0,
-    context.parameters.p2_ansiedad || 0,
-    context.parameters.p3_ansiedad || 0,
-    context.parameters.p4_ansiedad || 0,
-    context.parameters.p5_ansiedad || 0,
-    context.parameters.p6_ansiedad || 0,
-    context.parameters.p7_ansiedad || 0
-  ];
+ function obtenerPuntaje(agent) {
+  const p1 = agent.parameters.p1_ansiedad || 0;
+  const p2 = agent.parameters.p2_ansiedad || 0;
+  const p3 = agent.parameters.p3_ansiedad || 0;
+  const p4 = agent.parameters.p4_ansiedad || 0;
+  const p5 = agent.parameters.p5_ansiedad || 0;
+  const p6 = agent.parameters.p6_ansiedad || 0;
+  const p7 = agent.parameters.p7_ansiedad || 0;
 
-  const total = p1 + p2 + p3 + p4 + p5 + p6 + p7;
+  const puntaje = p1 + p2 + p3 + p4 + p5 + p6 + p7;
+  return puntaje;
+}
 
-  // Interpretación
+function puntajeAnsiedad(agent) {
+  const puntaje = obtenerPuntaje(agent);
+
+  // Guardar el puntaje en el contexto
+  agent.context.set({
+    name: 'contexto_puntaje_ansiedad',
+    lifespan: 50,
+    parameters: { puntaje_ansiedad: puntaje }
+  });
+
+  // Clasificar el nivel de ansiedad
   const nivel = (() => {
-    if (total <= 4) return 'mínimo';
-    else if (total <= 9) return 'leve';
-    else if (total <= 14) return 'moderado';
+    if (puntaje <= 4) return 'mínimo';
+    else if (puntaje <= 9) return 'leve';
+    else if (puntaje <= 14) return 'moderado';
     else return 'severo';
   })();
 
-  // Mensaje para el estudiante
-  const mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${total}. Nivel de ansiedad: ${nivel}.`;
-
+  // Construir y enviar el mensaje
+  const mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}.`;
   agent.add(mensaje);
+}
 }
   function resultadoEstres(agent) {
     return calcularResultado(agent, [
