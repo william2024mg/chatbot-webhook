@@ -1,36 +1,15 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const { WebhookClient } = require("dialogflow-fulfillment");
-
+// === DEPENDENCIAS ===
+const express = require('express');
+const bodyParser = require('body-parser');
+const { WebhookClient } = require('dialogflow-fulfillment');
 const app = express();
-const PORT = process.env.PORT || 3000;
+
+const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
-app.post("/webhook", (req, res) => {
-  const agent = new WebhookClient({ request: req, response: res });
-
-  
-  let intentMap = new Map();
-  intentMap.set("resultado_depresion", resultadoDepresion);
-  intentMap.set("resultado_ansiedad", resultadoAnsiedad);
-  intentMap.set("resultado_estres", resultadoEstres);
-  intentMap.set("resultado_autoestima", resultadoAutoestima);
-  intentMap.set("resultado_habilidades", resultadoHabilidades);
-  intentMap.set("resultado_sueno", resultadoSueno);
-  intentMap.set("resultado_acoso", resultadoAcoso);
-  intentMap.set("resumen_final_resultados", resumenFinal);
-
-  agent.handleRequest(intentMap);
-});
-
-app.listen(PORT, () => {
-  console.log(`Servidor webhook escuchando en el puerto ${PORT}`);
-});
-
 // === FUNCIONES GENERALES ===
-
-function obtenerPuntaje(agent, parametros) {
+function obtenerPuntajeDesdeParametros(agent, parametros) {
   let puntaje = 0;
   for (let i = 0; i < parametros.length; i++) {
     const valor = parseInt(agent.parameters[parametros[i]]);
@@ -41,85 +20,130 @@ function obtenerPuntaje(agent, parametros) {
   return puntaje;
 }
 
-function calcularResultado(agent, parametros, nombrePuntaje) {
-  const puntaje = obtenerPuntaje(agent, parametros);
-  agent.context.set({
-    name: "contexto_" + nombrePuntaje,
-    lifespan: 50,
-    parameters: { [nombrePuntaje]: puntaje },
-  });
-  agent.add(`Tu puntaje en este módulo es: ${puntaje}`);
-  return agent;
-}
+function calcularResultadoBloque(agent, parametros, nombreContexto, nombrePuntaje, interpretacionCallback) {
+  const puntaje = obtenerPuntajeDesdeParametros(agent, parametros);
 
-// === INTENTS INDIVIDUALES ===
-
-function resultadoDepresion(agent) {
-  return calcularResultado(agent, [
-    "p1_depresion",
-    "p2_depresion",
-    "p3_depresion",
-    "p4_depresion",
-    "p5_depresion",
-    "p6_depresion",
-    "p7_depresion",
-    "p8_depresion",
-    "p9_depresion",
-  ], "puntaje_depresion");
-}
-
-function resultadoAnsiedad(agent) {
-  const context = agent.context.get("contexto_respuestas_ansiedad");
-
-  const p1 = context?.parameters?.p1_ansiedad || 0;
-  const p2 = context?.parameters?.p2_ansiedad || 0;
-  const p3 = context?.parameters?.p3_ansiedad || 0;
-  const p4 = context?.parameters?.p4_ansiedad || 0;
-  const p5 = context?.parameters?.p5_ansiedad || 0;
-  const p6 = context?.parameters?.p6_ansiedad || 0;
-  const p7 = context?.parameters?.p7_ansiedad || 0;
-
-  const puntaje = p1 + p2 + p3 + p4 + p5 + p6 + p7;
-
-  let nivel = "";
-  if (puntaje <= 4) nivel = "mínimo";
-  else if (puntaje <= 9) nivel = "leve";
-  else if (puntaje <= 14) nivel = "moderado";
-  else nivel = "severo";
+  let nivel = '';
+  if (interpretacionCallback) {
+    nivel = interpretacionCallback(puntaje);
+  }
 
   agent.context.set({
-    name: "contexto_puntaje_ansiedad",
+    name: nombreContexto,
     lifespan: 50,
-    parameters: { puntaje_ansiedad: puntaje },
+    parameters: { [nombrePuntaje]: puntaje, [`nivel_${nombrePuntaje}`]: nivel }
   });
 
-  const mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}. Esto indica que tu nivel de ansiedad es ${nivel}.`;
+  let mensaje = `✅ Puntaje total en ${nombrePuntaje.replace('puntaje_', '').replace('_', ' ')}: ${puntaje}`;
+  if (nivel) mensaje += `\n🧠 Nivel identificado: ${nivel}`;
+
   agent.add(mensaje);
 }
 
-// Resto de las funciones (resultadoEstres, resultadoAutoestima, etc.) sin cambios
+// === INTERPRETACIÓN DE NIVELES ===
+function interpretarDepresion(puntaje) {
+  if (puntaje <= 4) return 'mínima';
+  if (puntaje <= 9) return 'leve';
+  if (puntaje <= 14) return 'moderada';
+  if (puntaje <= 19) return 'moderadamente severa';
+  return 'severa';
+}
 
-// === CONFIGURACIÓN PARA FIREBASE FUNCTIONS ===
+function interpretarAnsiedad(puntaje) {
+  if (puntaje <= 4) return 'mínima';
+  if (puntaje <= 9) return 'leve';
+  if (puntaje <= 14) return 'moderada';
+  return 'severa';
+}
 
-exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
-  const agent = new WebhookClient({ request, response });
+function interpretarGenerico(puntaje) {
+  if (puntaje <= 6) return 'bajo';
+  if (puntaje <= 12) return 'moderado';
+  return 'alto';
+}
+
+// === BLOQUES ===
+function resultadoDepresion(agent) {
+  return calcularResultadoBloque(agent, [
+    'p1_depresion', 'p2_depresion', 'p3_depresion',
+    'p4_depresion', 'p5_depresion', 'p6_depresion',
+    'p7_depresion', 'p8_depresion', 'p9_depresion'
+  ], 'contexto_puntaje_depresion', 'puntaje_depresion', interpretarDepresion);
+}
+
+function resultadoAnsiedad(agent) {
+  return calcularResultadoBloque(agent, [
+    'p1_ansiedad', 'p2_ansiedad', 'p3_ansiedad',
+    'p4_ansiedad', 'p5_ansiedad', 'p6_ansiedad', 'p7_ansiedad'
+  ], 'contexto_puntaje_ansiedad', 'puntaje_ansiedad', interpretarAnsiedad);
+}
+
+function resultadoEstres(agent) {
+  return calcularResultadoBloque(agent, [
+    'p1_estres', 'p2_estres', 'p3_estres',
+    'p4_estres', 'p5_estres', 'p6_estres'
+  ], 'contexto_puntaje_estres', 'puntaje_estres', interpretarGenerico);
+}
+
+function resultadoAutoestima(agent) {
+  return calcularResultadoBloque(agent, [
+    'p1_autoestima', 'p2_autoestima', 'p3_autoestima',
+    'p4_autoestima', 'p5_autoestima', 'p6_autoestima'
+  ], 'contexto_puntaje_autoestima', 'puntaje_autoestima', interpretarGenerico);
+}
+
+function resultadoAcoso(agent) {
+  return calcularResultadoBloque(agent, [
+    'p1_acoso', 'p2_acoso', 'p3_acoso',
+    'p4_acoso', 'p5_acoso', 'p6_acoso'
+  ], 'contexto_puntaje_acoso', 'puntaje_acoso', interpretarGenerico);
+}
+
+// === RESUMEN FINAL ===
+function resumenFinal(agent) {
+  const contextos = [
+    { ctx: 'contexto_puntaje_depresion', etiqueta: 'Depresión' },
+    { ctx: 'contexto_puntaje_ansiedad', etiqueta: 'Ansiedad' },
+    { ctx: 'contexto_puntaje_estres', etiqueta: 'Estrés académico' },
+    { ctx: 'contexto_puntaje_autoestima', etiqueta: 'Autoestima' },
+    { ctx: 'contexto_puntaje_acoso', etiqueta: 'Acoso escolar' }
+  ];
+
+  let mensaje = `📝 *Resumen de resultados del alumno:*
+\n`;
+
+  for (const bloque of contextos) {
+    const data = agent.context.get(bloque.ctx);
+    const puntaje = data?.parameters?.[`puntaje_${bloque.etiqueta.toLowerCase().replace(' ', '_')}`] || 'no disponible';
+    const nivel = data?.parameters?.[`nivel_puntaje_${bloque.etiqueta.toLowerCase().replace(' ', '_')}`] || 'no determinado';
+    mensaje += `• ${bloque.etiqueta}: ${puntaje} (Nivel: ${nivel})\n`;
+  }
+
+  mensaje += `\n💡 Este informe puede ser evaluado por un especialista.`;
+  agent.add(mensaje);
+}
+
+// === INTENT MAP ===
+app.post('/webhook', (req, res) => {
+  const agent = new WebhookClient({ request: req, response: res });
+  console.log('🧠 Webhook recibido');
 
   let intentMap = new Map();
-  intentMap.set("resultado_depresion", resultadoDepresion);
-  intentMap.set("resultado_ansiedad", resultadoAnsiedad);
-  intentMap.set("resultado_estres", resultadoEstres);
-  intentMap.set("resultado_autoestima", resultadoAutoestima);
-  intentMap.set("resultado_habilidades", resultadoHabilidades);
-  intentMap.set("resultado_sueno", resultadoSueno);
-  intentMap.set("resultado_acoso", resultadoAcoso);
-  intentMap.set("resumen_final_resultados", resumenFinal);
+  intentMap.set('resultado_depresion', resultadoDepresion);
+  intentMap.set('resultado_ansiedad', resultadoAnsiedad);
+  intentMap.set('resultado_estres', resultadoEstres);
+  intentMap.set('resultado_autoestima', resultadoAutoestima);
+  intentMap.set('resultado_acoso', resultadoAcoso);
+  intentMap.set('resumen_final_resultados', resumenFinal);
 
   agent.handleRequest(intentMap);
 });
 
+// === INICIO DE SERVIDOR ===
 app.listen(port, () => {
-  console.log(`Servidor webhook escuchando en el puerto ${port}`);
+  console.log(`🚀 Servidor corriendo en puerto ${port}`);
 });
+
 
 
 
