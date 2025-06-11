@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { WebhookClient } = require('dialogflow-fulfillment');
+const { WebhookClient } = require('dialogflow-fulfillment'); // CORRECTO
 const functions = require('firebase-functions');
 
 // === FUNCIONES GENERALES ===
