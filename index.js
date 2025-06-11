@@ -1,15 +1,16 @@
-const fs = require("fs");
-const PDFDocument = require("pdfkit");
-const path = require("path");
 const express = require("express");
-const bodyParser = require("body-parser");
-
 const app = express();
-app.use('/pdfs', express.static(path.join(__dirname, 'pdfs')));
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-app.use(bodyParser.json());
+app.use(express.json());
 
+app.post("/webhook", (req, res) => {
+  const body = req.body;
+  console.log("Solicitud recibida:", JSON.stringify(body, null, 2));
+  res.json({
+    fulfillmentText: "Hola, tu webhook está funcionando correctamente.",
+  });
+});
 // === FUNCIONES GENERALES ===
 
 function obtenerPuntaje(agent, parametros) {
