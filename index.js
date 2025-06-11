@@ -1,7 +1,11 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { WebhookClient } = require('dialogflow-fulfillment');
+const functions = require('firebase-functions');
 
+exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
+  const agent = new WebhookClient({ request, response });
+  
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -48,73 +52,49 @@ function resultadoAnsiedad(agent) {
   ];
   const puntaje = obtenerPuntaje(agent, parametros);
 
-  // Guardar el puntaje en el contexto
-  agent.context.set({
-    name: 'contexto_puntaje_ansiedad',
-    lifespan: 50,
-    parameters: { puntaje_ansiedad: puntaje }
-  });
+   function obtenerPuntajeAnsiedad(agent) {
+    const context = agent.context.get('contexto_respuestas_ansiedad');
 
-  // Obtener valores desde el contexto
-  function obtenerPuntaje(agent) {
-    const p1 = agent.parameters.p1_ansiedad || 0;
-    const p2 = agent.parameters.p2_ansiedad || 0;
-    const p3 = agent.parameters.p3_ansiedad || 0;
-    const p4 = agent.parameters.p4_ansiedad || 0;
-    const p5 = agent.parameters.p5_ansiedad || 0;
-    const p6 = agent.parameters.p6_ansiedad || 0;
-    const p7 = agent.parameters.p7_ansiedad || 0;
+    const p1 = context?.parameters?.p1_ansiedad || 0;
+    const p2 = context?.parameters?.p2_ansiedad || 0;
+    const p3 = context?.parameters?.p3_ansiedad || 0;
+    const p4 = context?.parameters?.p4_ansiedad || 0;
+    const p5 = context?.parameters?.p5_ansiedad || 0;
+    const p6 = context?.parameters?.p6_ansiedad || 0;
+    const p7 = context?.parameters?.p7_ansiedad || 0;
 
-    const puntaje = p1 + p2 + p3 + p4 + p5 + p6 + p7;
-    return puntaje;
-  }
-}
-
-function puntajeAnsiedad(agent) {
-  const puntaje = obtenerPuntaje(agent);
-
-  // Guardar el puntaje en el contexto
-  agent.context.set({
-    name: 'contexto_puntaje_ansiedad',
-    lifespan: 50,
-    parameters: { puntaje_ansiedad: puntaje }
-  });
-
-  // Clasificar el nivel de ansiedad
-  const nivel = (() => {
-    if (puntaje <= 4) return 'mínimo';
-    else if (puntaje <= 9) return 'leve';
-    else if (puntaje <= 14) return 'moderado';
-    else return 'severo';
-  })();
-
-  // Crear respuestas personalizadas para cada nivel de ansiedad
-  let mensaje;
-  switch (nivel) {
-    case 'mínimo':
-      mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}. Esto indica que tu nivel de ansiedad es mínimo.`;
-      break;
-    case 'leve':
-      mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}. Esto indica que tu nivel de ansiedad es leve.`;
-      break;
-    case 'moderado':
-      mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}. Esto indica que tu nivel de ansiedad es moderado.`;
-      break;
-    case 'severo':
-      mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}. Esto indica que tu nivel de ansiedad es severo.`;
-      break;
+    return p1 + p2 + p3 + p4 + p5 + p6 + p7;
   }
 
-  // Enviar el mensaje
-  agent.add(mensaje);
-}
+  // Intent: resultado_ansiedad (cuando el alumno escribe "ver ansiedad")
+  function resultadoAnsiedad(agent) {
+    const puntaje = obtenerPuntajeAnsiedad(agent);
 
-// Llamar al intent puntaje_ansiedad
-agent.handleRequest(async (agent) => {
-  // Lógica previa
-  await resultadoAnsiedad(agent);
-  await agent.add('Ahora vamos a calcular tu puntaje de ansiedad.');
-  await agent.intent('puntaje_ansiedad');
+    // Clasificación según GAD-7
+    let nivel = '';
+    if (puntaje <= 4) nivel = 'mínimo';
+    else if (puntaje <= 9) nivel = 'leve';
+    else if (puntaje <= 14) nivel = 'moderado';
+    else nivel = 'severo';
+
+    // Guardar resultado en otro contexto (opcional)
+    agent.context.set({
+      name: 'contexto_puntaje_ansiedad',
+      lifespan: 50,
+      parameters: { puntaje_ansiedad: puntaje }
+    });
+
+    // Mensaje final
+    const mensaje = `Tu puntaje total de ansiedad (GAD-7) es ${puntaje}. Nivel de ansiedad: ${nivel}. Esto indica que tu nivel de ansiedad es ${nivel}.`;
+
+    agent.add(mensaje);
+  }
+
+  // Mapeo de intents
+  let intentMap = new Map();
+  intentMap.set('resultado_ansiedad', resultadoAnsiedad); // Asegúrate que este sea el nombre exacto del intent
+
+  agent.handleRequest(intentMap);
 });
   function resultadoEstres(agent) {
     return calcularResultado(agent, [
