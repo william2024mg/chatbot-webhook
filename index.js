@@ -1,7 +1,14 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const { WebhookClient } = require('dialogflow-fulfillment'); // CORRECTO
-const functions = require('firebase-functions');
+const fs = require("fs");
+const PDFDocument = require("pdfkit");
+const path = require("path");
+const express = require("express");
+const bodyParser = require("body-parser");
+
+const app = express();
+app.use('/pdfs', express.static(path.join(__dirname, 'pdfs')));
+const port = process.env.PORT || 3000;
+
+app.use(bodyParser.json());
 
 // === FUNCIONES GENERALES ===
 
