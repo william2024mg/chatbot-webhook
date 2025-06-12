@@ -136,7 +136,7 @@ function resumenFinal(agent) {
   ];
 
   let mensaje = `📝 *Resumen del alumno:*\n• Nombre: ${nombre}\n• Edad: ${edad}\n• Celular apoderado: ${celular_apoderado}\n\n`;
-\n`;
+
 
   for (const bloque of contextos) {
     const data = agent.context.get(bloque.ctx);
