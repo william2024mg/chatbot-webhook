@@ -9,6 +9,26 @@ const port = process.env.PORT || 3000;
 app.use(bodyParser.json());
 
 // === FUNCIONES GENERALES ===
+function inicioDiagnostico(agent) {
+  const nombre = agent.parameters.nombre;
+  const edad = agent.parameters.edad;
+  const celular_apoderado = agent.parameters.celular_apoderado;
+
+  agent.context.set({
+    name: 'contexto_datos_alumno',
+    lifespan: 50,
+    parameters: { nombre, edad, celular_apoderado }
+  });
+
+  agent.add(`✅ Datos registrados:
+• Nombre: ${nombre}
+• Edad: ${edad}
+• Celular del apoderado: ${celular_apoderado}
+
+Empecemos con la evaluación. 🧠`);
+}
+
+
 function obtenerPuntajeDesdeParametros(agent, parametros) {
   let puntaje = 0;
   for (let i = 0; i < parametros.length; i++) {
@@ -101,6 +121,12 @@ function resultadoAcoso(agent) {
 
 // === RESUMEN FINAL ===
 function resumenFinal(agent) {
+
+ const alumnoCtx = agent.context.get('contexto_datos_alumno');
+  const nombre = alumnoCtx?.parameters?.nombre || 'Desconocido';
+  const edad = alumnoCtx?.parameters?.edad || 'No registrado';
+  const celular = alumnoCtx?.parameters?.celular_apoderado || alumnoCtx?.parameters?.celular_apoderado || 'No registrado';
+  
   const contextos = [
     { ctx: 'contexto_puntaje_depresion', etiqueta: 'Depresión' },
     { ctx: 'contexto_puntaje_ansiedad', etiqueta: 'Ansiedad' },
@@ -109,19 +135,28 @@ function resumenFinal(agent) {
     { ctx: 'contexto_puntaje_acoso', etiqueta: 'Acoso escolar' }
   ];
 
-  let mensaje = `📝 *Resumen de resultados del alumno:*
+  let mensaje = `📝 *Resumen del alumno:*\n• Nombre: ${nombre}\n• Edad: ${edad}\n• Celular apoderado: ${celular_apoderado}\n\n`;
 \n`;
 
   for (const bloque of contextos) {
     const data = agent.context.get(bloque.ctx);
-    const puntaje = data?.parameters?.[`puntaje_${bloque.etiqueta.toLowerCase().replace(' ', '_')}`] || 'no disponible';
-    const nivel = data?.parameters?.[`nivel_puntaje_${bloque.etiqueta.toLowerCase().replace(' ', '_')}`] || 'no determinado';
+    const puntajeKey = `puntaje_${bloque.etiqueta.toLowerCase().replace(' ', '_')}`;
+    const nivelKey = `nivel_${puntajeKey}`;
+    const puntaje = data?.parameters?.[puntajeKey] || 'no disponible';
+    const nivel = data?.parameters?.[nivelKey] || 'no determinado';
     mensaje += `• ${bloque.etiqueta}: ${puntaje} (Nivel: ${nivel})\n`;
   }
 
   mensaje += `\n💡 Este informe puede ser evaluado por un especialista.`;
+
+ // ⚠️ Aquí puedes integrar la futura generación de PDF
+  // generarPDF(nombre, edad, celular, resultados); // (Ejemplo para implementar luego)
+
+  
   agent.add(mensaje);
 }
+
+
 
 // === INTENT MAP ===
 app.post('/webhook', (req, res) => {
@@ -129,6 +164,7 @@ app.post('/webhook', (req, res) => {
   console.log('🧠 Webhook recibido');
 
   let intentMap = new Map();
+  intentMap.set('inicio_diagnostico', inicioDiagnostico);
   intentMap.set('resultado_depresion', resultadoDepresion);
   intentMap.set('resultado_ansiedad', resultadoAnsiedad);
   intentMap.set('resultado_estres', resultadoEstres);
