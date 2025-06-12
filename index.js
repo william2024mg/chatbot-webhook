@@ -4,9 +4,11 @@ const bodyParser = require('body-parser');
 const { WebhookClient } = require('dialogflow-fulfillment');
 const app = express();
 
-const port = process.env.PORT || 3000;
+process.env.DEBUG = 'dialogflow:debug';
 
+const port = process.env.PORT || 3000;
 app.use(bodyParser.json());
+
 
 // === FUNCIONES GENERALES ===
 function inicioDiagnostico(agent) {
@@ -28,7 +30,6 @@ function inicioDiagnostico(agent) {
 Empecemos con la evaluación. 🧠`);
 }
 
-
 function obtenerPuntajeDesdeParametros(agent, parametros) {
   let puntaje = 0;
   for (let i = 0; i < parametros.length; i++) {
@@ -40,137 +41,117 @@ function obtenerPuntajeDesdeParametros(agent, parametros) {
   return puntaje;
 }
 
-function calcularResultadoBloque(agent, parametros, nombreContexto, nombrePuntaje, interpretacionCallback) {
-  const puntaje = obtenerPuntajeDesdeParametros(agent, parametros);
 
-  let nivel = '';
-  if (interpretacionCallback) {
-    nivel = interpretacionCallback(puntaje);
+  
+function calcularPuntajeBloque(agent, claves, variableGlobal) {
+    let total = 0;
+    for (const clave of claves) {
+      const valor = parseInt(agent.parameters[clave] || 0);
+      total += valor;
+    }
+    agent.context.set({
+      name: variableGlobal,
+      lifespan: 50,
+      parameters: { total }
+    });
+    return total;
   }
 
-  agent.context.set({
-    name: nombreContexto,
-    lifespan: 50,
-    parameters: { [nombrePuntaje]: puntaje, [`nivel_${nombrePuntaje}`]: nivel }
-  });
+// === INTERPRETACIONES DE NIVELES ===
 
-  let mensaje = `✅ Puntaje total en ${nombrePuntaje.replace('puntaje_', '').replace('_', ' ')}: ${puntaje}`;
-  if (nivel) mensaje += `\n🧠 Nivel identificado: ${nivel}`;
+ function interpretarDepresion(p) {
+    if (p <= 4) return "mínima";
+    if (p <= 9) return "leve";
+    if (p <= 14) return "moderada";
+    if (p <= 19) return "moderadamente severa";
+    return "severa";
+  }
 
-  agent.add(mensaje);
-}
+  function interpretarAnsiedad(p) {
+    if (p <= 4) return "mínima";
+    if (p <= 9) return "leve";
+    if (p <= 14) return "moderada";
+    return "severa";
+  }
 
-// === INTERPRETACIÓN DE NIVELES ===
-function interpretarDepresion(puntaje) {
-  if (puntaje <= 4) return 'mínima';
-  if (puntaje <= 9) return 'leve';
-  if (puntaje <= 14) return 'moderada';
-  if (puntaje <= 19) return 'moderadamente severa';
-  return 'severa';
-}
+  function interpretarEstres(p) {
+    if (p <= 5) return "leve";
+    if (p <= 10) return "moderado";
+    return "alto";
+  }
 
-function interpretarAnsiedad(puntaje) {
-  if (puntaje <= 4) return 'mínima';
-  if (puntaje <= 9) return 'leve';
-  if (puntaje <= 14) return 'moderada';
-  return 'severa';
-}
+  function interpretarAutoestima(p) {
+    if (p <= 8) return "baja";
+    if (p <= 16) return "media";
+    return "alta";
+  }
 
-function interpretarGenerico(puntaje) {
-  if (puntaje <= 6) return 'bajo';
-  if (puntaje <= 12) return 'moderado';
-  return 'alto';
-}
+  function interpretarAcoso(p) {
+    if (p <= 5) return "mínimo o inexistente";
+    if (p <= 10) return "ocasional";
+    return "frecuente";
+  }
+  
+// === BLOQUES DE RESULTADO ===
+ function resultadoDepresion(agent) {
+    const total = calcularPuntajeBloque(agent, ['p1_depresion','p2_depresion','p3_depresion','p4_depresion','p5_depresion','p6_depresion','p7_depresion','p8_depresion','p9_depresion'], 'contexto_depresion');
+    agent.add(`Puntaje en depresión: ${total} - Nivel: ${interpretarDepresion(total)}.`);
+  }
 
-// === BLOQUES ===
-function resultadoDepresion(agent) {
-  return calcularResultadoBloque(agent, [
-    'p1_depresion', 'p2_depresion', 'p3_depresion',
-    'p4_depresion', 'p5_depresion', 'p6_depresion',
-    'p7_depresion', 'p8_depresion', 'p9_depresion'
-  ], 'contexto_puntaje_depresion', 'puntaje_depresion', interpretarDepresion);
-}
+  function resultadoAnsiedad(agent) {
+    const total = calcularPuntajeBloque(agent, ['p1_ansiedad','p2_ansiedad','p3_ansiedad','p4_ansiedad','p5_ansiedad','p6_ansiedad','p7_ansiedad'], 'contexto_ansiedad');
+    agent.add(`Puntaje en ansiedad: ${total} - Nivel: ${interpretarAnsiedad(total)}.`);
+  }
 
-function resultadoAnsiedad(agent) {
-  return calcularResultadoBloque(agent, [
-    'p1_ansiedad', 'p2_ansiedad', 'p3_ansiedad',
-    'p4_ansiedad', 'p5_ansiedad', 'p6_ansiedad', 'p7_ansiedad'
-  ], 'contexto_puntaje_ansiedad', 'puntaje_ansiedad', interpretarAnsiedad);
-}
+  function resultadoEstres(agent) {
+    const total = calcularPuntajeBloque(agent, ['p1_estres','p2_estres','p3_estres','p4_estres','p5_estres','p6_estres'], 'contexto_estres');
+    agent.add(`Puntaje en estrés académico: ${total} - Nivel: ${interpretarEstres(total)}.`);
+  }
 
-function resultadoEstres(agent) {
-  return calcularResultadoBloque(agent, [
-    'p1_estres', 'p2_estres', 'p3_estres',
-    'p4_estres', 'p5_estres', 'p6_estres'
-  ], 'contexto_puntaje_estres', 'puntaje_estres', interpretarGenerico);
-}
+  function resultadoAutoestima(agent) {
+    const total = calcularPuntajeBloque(agent, ['p1_autoestima','p2_autoestima','p3_autoestima','p4_autoestima','p5_autoestima','p6_autoestima'], 'contexto_autoestima');
+    agent.add(`Puntaje en autoestima: ${total} - Nivel: ${interpretarAutoestima(total)}.`);
+  }
 
-function resultadoAutoestima(agent) {
-  return calcularResultadoBloque(agent, [
-    'p1_autoestima', 'p2_autoestima', 'p3_autoestima',
-    'p4_autoestima', 'p5_autoestima', 'p6_autoestima'
-  ], 'contexto_puntaje_autoestima', 'puntaje_autoestima', interpretarGenerico);
-}
-
-function resultadoAcoso(agent) {
-  return calcularResultadoBloque(agent, [
-    'p1_acoso', 'p2_acoso', 'p3_acoso',
-    'p4_acoso', 'p5_acoso', 'p6_acoso'
-  ], 'contexto_puntaje_acoso', 'puntaje_acoso', interpretarGenerico);
-}
+  function resultadoAcoso(agent) {
+    const total = calcularPuntajeBloque(agent, ['p1_acoso','p2_acoso','p3_acoso','p4_acoso','p5_acoso','p6_acoso'], 'contexto_acoso');
+    agent.add(`Puntaje en acoso escolar: ${total} - Nivel: ${interpretarAcoso(total)}.`);
+  }
 
 // === RESUMEN FINAL ===
-function resumenFinal(agent) {
+function resultadoFinal(agent) {
+    const depresion = agent.getContext('contexto_depresion')?.parameters?.total || 0;
+    const ansiedad = agent.getContext('contexto_ansiedad')?.parameters?.total || 0;
+    const estres = agent.getContext('contexto_estres')?.parameters?.total || 0;
+    const autoestima = agent.getContext('contexto_autoestima')?.parameters?.total || 0;
+    const acoso = agent.getContext('contexto_acoso')?.parameters?.total || 0;
 
- const alumnoCtx = agent.context.get('contexto_datos_alumno');
-  const nombre = alumnoCtx?.parameters?.nombre || 'Desconocido';
-  const edad = alumnoCtx?.parameters?.edad || 'No registrado';
-  const celular = alumnoCtx?.parameters?.celular_apoderado || alumnoCtx?.parameters?.celular_apoderado || 'No registrado';
-  
-  const contextos = [
-    { ctx: 'contexto_puntaje_depresion', etiqueta: 'Depresión' },
-    { ctx: 'contexto_puntaje_ansiedad', etiqueta: 'Ansiedad' },
-    { ctx: 'contexto_puntaje_estres', etiqueta: 'Estrés académico' },
-    { ctx: 'contexto_puntaje_autoestima', etiqueta: 'Autoestima' },
-    { ctx: 'contexto_puntaje_acoso', etiqueta: 'Acoso escolar' }
-  ];
+    const resumen = `
+Resumen de diagnóstico:
+🔹 Depresión: ${depresion} - Nivel: ${interpretarDepresion(depresion)}
+🔹 Ansiedad: ${ansiedad} - Nivel: ${interpretarAnsiedad(ansiedad)}
+🔹 Estrés académico: ${estres} - Nivel: ${interpretarEstres(estres)}
+🔹 Autoestima: ${autoestima} - Nivel: ${interpretarAutoestima(autoestima)}
+🔹 Acoso escolar: ${acoso} - Nivel: ${interpretarAcoso(acoso)}
+`;
 
-  let mensaje = `📝 *Resumen del alumno:*\n• Nombre: ${nombre}\n• Edad: ${edad}\n• Celular apoderado: ${celular_apoderado}\n\n`;
-
-
-  for (const bloque of contextos) {
-    const data = agent.context.get(bloque.ctx);
-    const puntajeKey = `puntaje_${bloque.etiqueta.toLowerCase().replace(' ', '_')}`;
-    const nivelKey = `nivel_${puntajeKey}`;
-    const puntaje = data?.parameters?.[puntajeKey] || 'no disponible';
-    const nivel = data?.parameters?.[nivelKey] || 'no determinado';
-    mensaje += `• ${bloque.etiqueta}: ${puntaje} (Nivel: ${nivel})\n`;
+    agent.add(resumen);
+    agent.add("Gracias por completar el diagnóstico. Este resultado puede ser revisado por un especialista.");
   }
 
-  mensaje += `\n💡 Este informe puede ser evaluado por un especialista.`;
-
- // ⚠️ Aquí puedes integrar la futura generación de PDF
-  // generarPDF(nombre, edad, celular, resultados); // (Ejemplo para implementar luego)
-
-  
-  agent.add(mensaje);
-}
-
-
-
+ 
 // === INTENT MAP ===
 app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
   console.log('🧠 Webhook recibido');
 
-  let intentMap = new Map();
-  intentMap.set('inicio_diagnostico', inicioDiagnostico);
-  intentMap.set('resultado_depresion', resultadoDepresion);
+ let intentMap = new Map();
+  intentMap.set('resultado_depresión', resultadoDepresion);
   intentMap.set('resultado_ansiedad', resultadoAnsiedad);
   intentMap.set('resultado_estres', resultadoEstres);
   intentMap.set('resultado_autoestima', resultadoAutoestima);
   intentMap.set('resultado_acoso', resultadoAcoso);
-  intentMap.set('resumen_final_resultados', resumenFinal);
+  intentMap.set('resultado_final', resultadoFinal);
 
   agent.handleRequest(intentMap);
 });
@@ -179,6 +160,7 @@ app.post('/webhook', (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en puerto ${port}`);
 });
+
 
 
 
