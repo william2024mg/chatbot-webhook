@@ -74,14 +74,39 @@ function interpretarAcoso(p) {
 
 // === BLOQUES DE RESULTADOS ===
 function resultadoDepresion(agent) {
-  const total = calcularPuntajeBloque(agent, [
-    'p1_depresion','p2_depresion','p3_depresion',
-    'p4_depresion','p5_depresion','p6_depresion',
-    'p7_depresion','p8_depresion','p9_depresion'
-  ], 'contexto_depresion');
+  const p1 = parseInt(agent.parameters.p1_depresion || 0);
+  const p2 = parseInt(agent.parameters.p2_depresion || 0);
+  const p3 = parseInt(agent.parameters.p3_depresion || 0);
+  const p4 = parseInt(agent.parameters.p4_depresion || 0);
+  const p5 = parseInt(agent.parameters.p5_depresion || 0);
+  const p6 = parseInt(agent.parameters.p6_depresion || 0);
+  const p7 = parseInt(agent.parameters.p7_depresion || 0);
+  const p8 = parseInt(agent.parameters.p8_depresion || 0);
+  const p9 = parseInt(agent.parameters.p9_depresion || 0);
 
-  const nivel = interpretarDepresion(total);
-  agent.add(`✅ Resultado del test de depresión (PHQ-9):\n🔢 Puntaje total: ${total}\n📊 Nivel: ${nivel}`);
+  const total = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+  let nivel = '';
+
+  if (total <= 4) {
+    nivel = 'Depresión mínima o nula';
+  } else if (total <= 9) {
+    nivel = 'Depresión leve';
+  } else if (total <= 14) {
+    nivel = 'Depresión moderada';
+  } else if (total <= 19) {
+    nivel = 'Depresión moderadamente severa';
+  } else {
+    nivel = 'Depresión severa';
+  }
+
+  // Guarda el total en el contexto para usarlo después
+  agent.context.set({
+    name: 'contexto_depresion',
+    lifespan: 50,
+    parameters: { total }
+  });
+
+  agent.add(`✅ Resultado del test de depresión (PHQ-9):\n\n🔢 Puntaje total: ${total}\n📊 Nivel: ${nivel}`);
 }
 
 function resultadoAnsiedad(agent) {
