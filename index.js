@@ -147,6 +147,34 @@ app.post('/webhook', (req, res) => {
 
  let intentMap = new Map();
   intentMap.set('resultado_depresión', resultadoDepresion);
+  function resultadoDepresion(agent) {
+  const p1 = parseInt(agent.parameters.p1_depresion || 0);
+  const p2 = parseInt(agent.parameters.p2_depresion || 0);
+  const p3 = parseInt(agent.parameters.p3_depresion || 0);
+  const p4 = parseInt(agent.parameters.p4_depresion || 0);
+  const p5 = parseInt(agent.parameters.p5_depresion || 0);
+  const p6 = parseInt(agent.parameters.p6_depresion || 0);
+  const p7 = parseInt(agent.parameters.p7_depresion || 0);
+  const p8 = parseInt(agent.parameters.p8_depresion || 0);
+  const p9 = parseInt(agent.parameters.p9_depresion || 0);
+
+  const total = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+  let nivel = '';
+
+  if (total <= 4) {
+    nivel = 'Depresión mínima o nula';
+  } else if (total <= 9) {
+    nivel = 'Depresión leve';
+  } else if (total <= 14) {
+    nivel = 'Depresión moderada';
+  } else if (total <= 19) {
+    nivel = 'Depresión moderadamente severa';
+  } else {
+    nivel = 'Depresión severa';
+  }
+
+  agent.add(`✅ Resultado del test de depresión (PHQ-9):\n\n🔢 Puntaje total: ${total}\n📊 Nivel: ${nivel}`);
+}
   intentMap.set('resultado_ansiedad', resultadoAnsiedad);
   intentMap.set('resultado_estres', resultadoEstres);
   intentMap.set('resultado_autoestima', resultadoAutoestima);
