@@ -74,45 +74,77 @@ function interpretarAcoso(p) {
 }
 
 // === BLOQUES DE RESULTADOS ===
-   function handleResultadoDepresion(agent) {
-    const parametros = agent.parameters;
+   function resultadoDepresion(agent) {
+  const p1 = parseInt(agent.parameters.p1_depresion || 0);
+  const p2 = parseInt(agent.parameters.p2_depresion || 0);
+  const p3 = parseInt(agent.parameters.p3_depresion || 0);
+  const p4 = parseInt(agent.parameters.p4_depresion || 0);
+  const p5 = parseInt(agent.parameters.p5_depresion || 0);
+  const p6 = parseInt(agent.parameters.p6_depresion || 0);
+  const p7 = parseInt(agent.parameters.p7_depresion || 0);
+  const p8 = parseInt(agent.parameters.p8_depresion || 0);
+  const p9 = parseInt(agent.parameters.p9_depresion || 0);
 
-    const p1 = parseInt(parametros.p1_depresion || 0);
-    const p2 = parseInt(parametros.p2_depresion || 0);
-    const p3 = parseInt(parametros.p3_depresion || 0);
-    const p4 = parseInt(parametros.p4_depresion || 0);
-    const p5 = parseInt(parametros.p5_depresion || 0);
-    const p6 = parseInt(parametros.p6_depresion || 0);
-    const p7 = parseInt(parametros.p7_depresion || 0);
-    const p8 = parseInt(parametros.p8_depresion || 0);
-    const p9 = parseInt(parametros.p9_depresion || 0);
+  const total = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+  let interpretacion = '';
 
-    const total = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
-
-    let interpretacion = '';
-    if (total <= 4) {
-      interpretacion = 'Depresión mínima o ninguna.';
-    } else if (total <= 9) {
-      interpretacion = 'Depresión leve.';
-    } else if (total <= 14) {
-      interpretacion = 'Depresión moderada.';
-    } else if (total <= 19) {
-      interpretacion = 'Depresión moderadamente severa.';
-    } else {
-      interpretacion = 'Depresión severa.';
-    }
-
-    const respuesta = `Tu puntaje total en el cuestionario PHQ-9 es **${total}**, lo que indica: **${interpretacion}**`;
-    agent.add(respuesta);
+  if (total <= 4) {
+    interpretacion = 'Depresión mínima';
+  } else if (total <= 9) {
+    interpretacion = 'Depresión leve';
+  } else if (total <= 14) {
+    interpretacion = 'Depresión moderada';
+  } else if (total <= 19) {
+    interpretacion = 'Depresión moderadamente severa';
+  } else {
+    interpretacion = 'Depresión severa';
   }
 
-function resultadoAnsiedad(agent) {
-  const total = calcularPuntajeBloque(agent, [
-    'p1_ansiedad','p2_ansiedad','p3_ansiedad',
-    'p4_ansiedad','p5_ansiedad','p6_ansiedad','p7_ansiedad'
-  ], 'contexto_ansiedad');
-  agent.add(`Puntaje en ansiedad: ${total} - Nivel: ${interpretarAnsiedad(total)}.`);
+  agent.add(`✅ Resultado del test PHQ-9:`);
+  agent.add(`Puntaje total: ${total}`);
+  agent.add(`Nivel de depresión: ${interpretacion}`);
+  agent.add(`¿Deseas continuar con el siguiente bloque? (Responde: Sí / No)`);
+
+  // CONTEXTO de salida para iniciar ansiedad
+  agent.setContext({
+    name: 'contexto_ansiedad_inicio',
+    lifespan: 5,
+  });
 }
+
+function resultadoAnsiedad(agent) {
+    const p1 = parseInt(agent.parameters.p1_ansiedad || 0);
+    const p2 = parseInt(agent.parameters.p2_ansiedad || 0);
+    const p3 = parseInt(agent.parameters.p3_ansiedad || 0);
+    const p4 = parseInt(agent.parameters.p4_ansiedad || 0);
+    const p5 = parseInt(agent.parameters.p5_ansiedad || 0);
+    const p6 = parseInt(agent.parameters.p6_ansiedad || 0);
+    const p7 = parseInt(agent.parameters.p7_ansiedad || 0);
+
+    const total = p1 + p2 + p3 + p4 + p5 + p6 + p7;
+    let interpretacion = '';
+
+    if (total <= 4) {
+      interpretacion = 'Ansiedad mínima';
+    } else if (total <= 9) {
+      interpretacion = 'Ansiedad leve';
+    } else if (total <= 14) {
+      interpretacion = 'Ansiedad moderada';
+    } else {
+      interpretacion = 'Ansiedad severa';
+    }
+
+    agent.add(`✅ Resultado del test GAD-7:`);
+    agent.add(`Puntaje total: ${total}`);
+    agent.add(`Nivel de ansiedad: ${interpretacion}`);
+    agent.add(`¿Deseas continuar con el siguiente bloque? (Responde: Sí / No)`);
+
+    // CONTEXTO para el siguiente bloque, por ejemplo: estrés
+    agent.setContext({
+      name: 'contexto_estres_inicio',
+      lifespan: 5,
+    });
+  }
 
 function resultadoEstres(agent) {
   const total = calcularPuntajeBloque(agent, [
@@ -166,7 +198,7 @@ app.post('/webhook', (req, res) => {
 
   let intentMap = new Map();
   intentMap.set('inicio_diagnostico', inicioDiagnostico);
-  intentMap.set('resultado_depresion', handleResultadoDepresion);
+  intentMap.set('resultado_depresion', resultadoDepresion);
   intentMap.set('resultado_ansiedad', resultadoAnsiedad);
   intentMap.set('resultado_estres', resultadoEstres);
   intentMap.set('resultado_autoestima', resultadoAutoestima);
