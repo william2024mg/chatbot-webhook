@@ -147,11 +147,33 @@ function resultadoAnsiedad(agent) {
   }
 
 function resultadoEstres(agent) {
-  const total = calcularPuntajeBloque(agent, [
-    'p1_estres','p2_estres','p3_estres',
-    'p4_estres','p5_estres','p6_estres'
-  ], 'contexto_estres');
-  agent.add(`Puntaje en estrés académico: ${total} - Nivel: ${interpretarEstres(total)}.`);
+  const p1 = parseInt(agent.parameters.p1_estres);
+  const p2 = parseInt(agent.parameters.p2_estres);
+  const p3 = parseInt(agent.parameters.p3_estres);
+  const p4 = parseInt(agent.parameters.p4_estres);
+  const p5 = parseInt(agent.parameters.p5_estres);
+  const p6 = parseInt(agent.parameters.p6_estres);
+
+  const total = p1 + p2 + p3 + p4 + p5 + p6;
+
+  let nivel = "";
+  if (total <= 6) {
+    nivel = "Bajo";
+  } else if (total <= 12) {
+    nivel = "Moderado";
+  } else {
+    nivel = "Alto";
+  }
+
+  agent.add(`📊 Tu puntaje total en estrés académico es: *${total}* puntos.`);
+  agent.add(`🔎 Nivel de estrés académico detectado: *${nivel}*.`);
+  agent.add(`➡️ Ahora continuaremos con el siguiente bloque: Autoestima.`);
+
+  // Activar contexto de inicio para el siguiente bloque:
+  agent.setContext({
+    name: "contexto_autoestima_inicio",
+    lifespan: 5,
+  });
 }
 
 function resultadoAutoestima(agent) {
