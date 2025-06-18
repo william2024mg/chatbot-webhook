@@ -204,12 +204,28 @@ function resultadoAutoestima(agent) {
   agent.add("Ahora continuaremos con las siguientes preguntas.");
 }
 
-function resultadoAcoso(agent) {
-  const total = calcularPuntajeBloque(agent, [
-    'p1_acoso','p2_acoso','p3_acoso',
-    'p4_acoso','p5_acoso','p6_acoso'
-  ], 'contexto_acoso');
-  agent.add(`Puntaje en acoso escolar: ${total} - Nivel: ${interpretarAcoso(total)}.`);
+function resultadoAcosoEscolar(agent) {
+  const p1 = parseInt(agent.parameters.p1_acosoescolar);
+  const p2 = parseInt(agent.parameters.p2_acosoescolar);
+  const p3 = parseInt(agent.parameters.p3_acosoescolar);
+  const p4 = parseInt(agent.parameters.p4_acosoescolar);
+  const p5 = parseInt(agent.parameters.p5_acosoescolar);
+  const p6 = parseInt(agent.parameters.p6_acosoescolar);
+
+  const total = p1 + p2 + p3 + p4 + p5 + p6;
+
+  let interpretacion = "";
+
+  if (total <= 4) {
+    interpretacion = "un nivel bajo de acoso escolar.";
+  } else if (total <= 8) {
+    interpretacion = "un nivel moderado de acoso escolar.";
+  } else {
+    interpretacion = "un nivel alto de acoso escolar.";
+  }
+
+  agent.add(`Tu puntaje total de acoso escolar es: ${total} puntos. Esto indica ${interpretacion}`);
+  agent.add("Si has experimentado alguna de estas situaciones, recuerda que no estás solo. Habla con un docente, familiar o especialista.");
 }
 
 // === RESUMEN FINAL ===
