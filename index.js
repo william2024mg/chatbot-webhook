@@ -260,7 +260,7 @@ app.post('/webhook', (req, res) => {
   intentMap.set('resultado_ansiedad', resultadoAnsiedad);
   intentMap.set('resultado_estres', resultadoEstres);
   intentMap.set('resultado_autoestima', resultadoAutoestima);
-  intentMap.set('resultado_acoso', resultadoAcoso);
+  intentMap.set('resultado_acosoescolar', resultadoAcosoEscolar);
   intentMap.set('resultado_final', resultadoFinal);
 
   agent.handleRequest(intentMap);
