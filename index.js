@@ -177,11 +177,31 @@ function resultadoEstres(agent) {
 }
 
 function resultadoAutoestima(agent) {
-  const total = calcularPuntajeBloque(agent, [
-    'p1_autoestima','p2_autoestima','p3_autoestima',
-    'p4_autoestima','p5_autoestima','p6_autoestima'
-  ], 'contexto_autoestima');
-  agent.add(`Puntaje en autoestima: ${total} - Nivel: ${interpretarAutoestima(total)}.`);
+  const p1 = parseInt(agent.parameters.p1_autoestima);
+  const p2 = parseInt(agent.parameters.p2_autoestima);
+  const p3 = parseInt(agent.parameters.p3_autoestima);
+  const p4 = parseInt(agent.parameters.p4_autoestima);
+  const p5 = parseInt(agent.parameters.p5_autoestima);
+  const p6 = parseInt(agent.parameters.p6_autoestima);
+
+  const total = p1 + p2 + p3 + p4 + p5 + p6;
+
+  let interpretacion = "";
+
+  if (total <= 6) {
+    interpretacion = "Autoestima muy baja.";
+  } else if (total <= 12) {
+    interpretacion = "Autoestima baja.";
+  } else if (total <= 18) {
+    interpretacion = "Autoestima media.";
+  } else {
+    interpretacion = "Autoestima alta.";
+  }
+
+  agent.add(`Tu puntaje total de autoestima es: ${total} puntos. ${interpretacion}`);
+
+  // Opcional: puedes agregar transición al siguiente bloque
+  agent.add("Ahora continuaremos con las siguientes preguntas.");
 }
 
 function resultadoAcoso(agent) {
