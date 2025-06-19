@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const { WebhookClient } = require('dialogflow-fulfillment');
 const app = express();
 
+const PDFDocument = require('pdfkit');
 
 process.env.DEBUG = 'dialogflow:debug';
 const port = process.env.PORT || 3000;
@@ -240,6 +241,8 @@ function resultadoFinal(agent) {
   const autoestima = agent.getContext('contexto_autoestima')?.parameters?.total || 0;
   const acoso = agent.getContext('contexto_acoso')?.parameters?.total || 0;
 
+  const { nombre, edad, celular_apoderado } = agent.getContext('contexto_datos_alumno')?.parameters || {};
+
   const resumen = `
 📝 *Resumen de diagnóstico*:
 🔹 Depresión: ${depresion} - Nivel: ${interpretarDepresion(depresion)}
@@ -251,6 +254,33 @@ function resultadoFinal(agent) {
 
   agent.add(resumen);
   agent.add("Gracias por completar el diagnóstico. Este resultado puede ser revisado por un especialista.");
+
+  // === PDF ===
+  const PDFDocument = require('pdfkit');
+  const fs = require('fs');
+  const path = require('path');
+
+  const filePath = path.join(__dirname, 'public', 'reporte_diagnostico.pdf');
+  const doc = new PDFDocument();
+  doc.pipe(fs.createWriteStream(filePath));
+
+  doc.fontSize(16).text('📝 Informe de Diagnóstico', { align: 'center' });
+  doc.moveDown();
+  doc.fontSize(12).text(`Nombre: ${nombre}`);
+  doc.text(`Edad: ${edad}`);
+  doc.text(`Celular del apoderado: ${celular_apoderado}`);
+  doc.moveDown();
+  doc.fontSize(14).text('Resultados:');
+  doc.fontSize(12).text(`Depresión: ${interpretarDepresion(depresion)} (${depresion})`);
+  doc.text(`Ansiedad: ${interpretarAnsiedad(ansiedad)} (${ansiedad})`);
+  doc.text(`Estrés académico: ${interpretarEstres(estres)} (${estres})`);
+  doc.text(`Autoestima: ${interpretarAutoestima(autoestima)} (${autoestima})`);
+  doc.text(`Acoso escolar: ${interpretarAcoso(acoso)} (${acoso})`);
+  doc.end();
+
+  // Enlace de descarga
+  agent.add('📄 Puedes descargar tu informe completo aquí:');
+  agent.add('https://https://chatbot-webhook-chij.onrender.com/public/reporte_diagnostico.pdf');
 }
 
 // === INTENT MAP ===
