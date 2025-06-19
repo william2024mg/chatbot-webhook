@@ -226,6 +226,10 @@ function resultadoAcosoEscolar(agent) {
 
   agent.add(`Tu puntaje total de acoso escolar es: ${total} puntos. Esto indica ${interpretacion}`);
   agent.add("Si has experimentado alguna de estas situaciones, recuerda que no estás solo. Habla con un docente, familiar o especialista.");
+  agent.setContext({
+  name: 'contexto_resultado_final',
+  lifespan: 5
+});
 }
 
 // === RESUMEN FINAL ===
