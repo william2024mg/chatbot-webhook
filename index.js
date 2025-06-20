@@ -106,11 +106,18 @@ function interpretarAcoso(p) {
   agent.add(`Nivel de depresión: ${interpretacion}`);
   agent.add(`¿Deseas continuar con el siguiente bloque? (Responde: Sí / No)`);
 
-  // CONTEXTO de salida para iniciar ansiedad
-  agent.setContext({
-    name: 'contexto_ansiedad_inicio',
-    lifespan: 5,
-  });
+// Guardar total de depresión
+agent.setContext({
+  name: 'contexto_depresion',
+  lifespan: 5,
+  parameters: { total }
+});
+
+// Activar siguiente bloque: ansiedad
+agent.setContext({
+  name: 'contexto_ansiedad_inicio',
+  lifespan: 5
+});
 }
 
 function resultadoAnsiedad(agent) {
@@ -140,11 +147,18 @@ function resultadoAnsiedad(agent) {
     agent.add(`Nivel de ansiedad: ${interpretacion}`);
     agent.add(`¿Deseas continuar con el siguiente bloque? (Responde: Sí / No)`);
 
-    // CONTEXTO para el siguiente bloque, por ejemplo: estrés
-    agent.setContext({
-      name: 'contexto_estres_inicio',
-      lifespan: 5,
-    });
+   // Guardar total de ansiedad
+agent.setContext({
+  name: 'contexto_ansiedad',
+  lifespan: 5,
+  parameters: { total }
+});
+
+// Activar siguiente bloque: estrés académico
+agent.setContext({
+  name: 'contexto_estres_inicio',
+  lifespan: 5
+});
   }
 
 function resultadoEstres(agent) {
@@ -171,10 +185,18 @@ function resultadoEstres(agent) {
   agent.add(`➡️ Ahora continuaremos con el siguiente bloque: Autoestima.`);
 
   // Activar contexto de inicio para el siguiente bloque:
+  
   agent.setContext({
     name: "contexto_autoestima_inicio",
     lifespan: 5,
   });
+
+ // Guardar total de estrés académico
+  agent.setContext({
+  name: 'contexto_estres',
+  lifespan: 5,
+  parameters: { total }
+});
 }
 
 function resultadoAutoestima(agent) {
@@ -203,6 +225,19 @@ function resultadoAutoestima(agent) {
 
   // Opcional: puedes agregar transición al siguiente bloque
   agent.add("Ahora continuaremos con las siguientes preguntas.");
+  
+  // Guardar total de autoestima
+agent.setContext({
+  name: 'contexto_autoestima',
+  lifespan: 5,
+  parameters: { total }
+});
+
+// Activar siguiente bloque: acoso escolar
+agent.setContext({
+  name: 'contexto_acoso_inicio',
+  lifespan: 5
+});
 }
 
 function resultadoAcosoEscolar(agent) {
@@ -227,7 +262,16 @@ function resultadoAcosoEscolar(agent) {
 
   agent.add(`Tu puntaje total de acoso escolar es: ${total} puntos. Esto indica ${interpretacion}`);
   agent.add("Si has experimentado alguna de estas situaciones, recuerda que no estás solo. Habla con un docente, familiar o especialista.");
-  agent.setContext({
+ 
+  // Guardar total de acoso escolar
+agent.setContext({
+  name: 'contexto_acoso',
+  lifespan: 5,
+  parameters: { total }
+});
+
+// Activar bloque final (resumen del diagnóstico)
+agent.setContext({
   name: 'contexto_resultado_final',
   lifespan: 5
 });
