@@ -24,6 +24,10 @@ function inicioDiagnostico(agent) {
 • Celular del apoderado: ${celular_apoderado}
 
 Empecemos con la evaluación. 🧠`);
+  agent.setContext({
+  name: 'contexto_depresion_inicio',
+  lifespan: 5
+});
 }
 
 function calcularPuntajeBloque(agent, claves, variableGlobal) {
