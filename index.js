@@ -108,8 +108,7 @@ function interpretarAcoso(p) {
   agent.add(`✅ Resultado del test PHQ-9:`);
   agent.add(`Puntaje total: ${total}`);
   agent.add(`Nivel de depresión: ${interpretacion}`);
-  agent.add(`¿Deseas continuar con el siguiente bloque? (Responde: Sí / No)`);
-
+  
 // Guardar total de depresión
 agent.setContext({
   name: 'contexto_depresion',
@@ -118,6 +117,7 @@ agent.setContext({
 });
 
 // Activar siguiente bloque: ansiedad
+     agent.add(`¿Deseas continuar con el siguiente bloque? (Responde: Sí / No)`);
 agent.setContext({
   name: 'contexto_ansiedad_inicio',
   lifespan: 5
