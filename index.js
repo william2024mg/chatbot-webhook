@@ -117,7 +117,7 @@ agent.setContext({
 });
 
 // Activar siguiente bloque: ansiedad
-     agent.add(`¿Deseas continuar con el siguiente bloque? (Responde: Sí / No)`);
+     agent.add(`¿Deseas continuar con el siguiente bloque? (Responde: si / No)`);
 agent.setContext({
   name: 'contexto_ansiedad_inicio',
   lifespan: 5
