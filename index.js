@@ -22,26 +22,32 @@ function interpretarDepresion(p) {
 
 // === INICIO DIAGNÓSTICO ===
 function inicioDiagnostico(agent) {
- const parameters = agent.parameters || {};
-const { nombre, edad, celular_apoderado } = parameters;  
+  const params = agent.parameters || {};
+  const nombre = params.nombre || "N/D";
+  const edad = params.edad || "N/D";
+  const celular_apoderado = params.celular_apoderado || "N/D";
+
   agent.context.set({
     name: 'contexto_datos_alumno',
-    lifespan: 30,
+    lifespan: 50,
     parameters: { nombre, edad, celular_apoderado }
   });
 
-  // Inicializa índice y respuestas
-  respuestasDepresion = [];
-  agent.context.set({
-    name: 'contexto_pregunta_depresion',
+  agent.add(`✅ Datos registrados:
+• Nombre: ${nombre}
+• Edad: ${edad}
+• Celular del apoderado: ${celular_apoderado}
+
+Empecemos con la evaluación. 🧠`);
+
+  // Activamos el contexto para el siguiente intent: bloque_depresion
+  agent.setContext({
+    name: 'conteo_preguntas_depresion',
     lifespan: 10,
     parameters: { index: 0 }
   });
 
-  // Lanzar primera pregunta automáticamente
-  const pregunta = preguntasDepresion[0];
-  agent.add(`✅ Datos registrados:\n• Nombre: ${nombre}\n• Edad: ${edad}\n• Celular del apoderado: ${celular_apoderado}`);
-  agent.add(`\n🧠 *Evaluación de Depresión (PHQ-9)*\n\nPRIMERA PREGUNTA:\n${pregunta}\n(Responde del 0 al 3)`);
+  agent.add("🧠 *Evaluación de Depresión (PHQ-9)*\n\nPRIMERA PREGUNTA:\n¿Poco interés o placer en hacer cosas?\n(Responde con un número del 0 al 3)\n\n0 = Nada en absoluto\n1 = Varios días\n2 = Más de la mitad de los días\n3 = Casi todos los días");
 }
 
 // === PREGUNTAS PHQ-9 ===
