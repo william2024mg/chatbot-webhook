@@ -8,30 +8,10 @@ process.env.DEBUG = 'dialogflow:debug';
 const port = process.env.PORT || 3000;
 app.use(bodyParser.json());
 
-let respuestasDepresion = [];
+// === VARIABLES GLOBALES (en memoria para ejemplo) ===
+let respuestasDepresion = []; // para capturar los 9 puntajes
 
-// === FUNCIONES GENERALES ===
-function inicioDiagnostico(agent) {
-  const { nombre, edad, celular_apoderado } = agent.parameters;
-  agent.context.set({
-    name: 'contexto_datos_alumno',
-    lifespan: 50,
-    parameters: { nombre, edad, celular_apoderado }
-  });
-  agent.add(`✅ Datos registrados:\n• Nombre: ${nombre}\n• Edad: ${edad}\n• Celular del apoderado: ${celular_apoderado}\n\nEmpecemos con la evaluación de *Depresión (PHQ-9)* 🧠`);
-  
-  // Inicializar la primera pregunta
-  agent.context.set({
-    name: 'conteo_preguntas_depresion',
-    lifespan: 20,
-    parameters: { index: 0 }
-  });
-  
-  respuestasDepresion = [];
-
-  agent.add(`PRIMERA PREGUNTA:\n¿Poco interés o placer en hacer cosas?\n(Responde del 0 al 3)\n\n0 = Nada en absoluto\n1 = Varios días\n2 = Más de la mitad de los días\n3 = Casi todos los días`);
-}
-
+// === INTERPRETACIÓN ===
 function interpretarDepresion(p) {
   if (p <= 4) return "mínima o nula";
   if (p <= 9) return "leve";
@@ -40,58 +20,87 @@ function interpretarDepresion(p) {
   return "severa";
 }
 
-// === BLOQUE DE DEPRESIÓN DINÁMICO ===
+// === INICIO DIAGNÓSTICO ===
+function inicioDiagnostico(agent) {
+  const { nombre, edad, celular_apoderado } = agent.parameters;
+  agent.context.set({
+    name: 'contexto_datos_alumno',
+    lifespan: 30,
+    parameters: { nombre, edad, celular_apoderado }
+  });
+
+  // Inicializa índice y respuestas
+  respuestasDepresion = [];
+  agent.context.set({
+    name: 'contexto_pregunta_depresion',
+    lifespan: 10,
+    parameters: { index: 0 }
+  });
+
+  // Lanzar primera pregunta automáticamente
+  const pregunta = preguntasDepresion[0];
+  agent.add(`✅ Datos registrados:\n• Nombre: ${nombre}\n• Edad: ${edad}\n• Celular del apoderado: ${celular_apoderado}`);
+  agent.add(`\n🧠 *Evaluación de Depresión (PHQ-9)*\n\nPRIMERA PREGUNTA:\n${pregunta}\n(Responde del 0 al 3)`);
+}
+
+// === PREGUNTAS PHQ-9 ===
+const preguntasDepresion = [
+  "¿Poco interés o placer en hacer cosas?",
+  "¿Te has sentido decaído, deprimido o sin esperanza?",
+  "¿Dificultad para quedarte dormido, o dormir demasiado?",
+  "¿Te has sentido cansado o con poca energía?",
+  "¿Poca autoestima, o te has sentido inútil o fracasado?",
+  "¿Dificultad para concentrarte en cosas como leer o ver televisión?",
+  "¿Te has movido o hablado tan lento que otras personas lo notaron?",
+  "¿Has tenido pensamientos de que estarías mejor muerto o de hacerte daño?",
+  "¿Qué tan difícil han hecho estos problemas tu vida diaria?"
+];
+
+// === BLOQUE DEPRESIÓN ===
 function bloqueDepresion(agent) {
-  const contexto = agent.context.get('conteo_preguntas_depresion');
-  const index = contexto?.parameters?.index || 0;
+  const context = agent.getContext('contexto_pregunta_depresion');
+  let index = context?.parameters?.index || 0;
   const respuesta = parseInt(agent.query);
 
   if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
-    agent.add("❗ Por favor responde solo con un número del 0 al 3.");
+    agent.add("⚠️ Por favor, responde con un número del 0 al 3.");
     return;
   }
 
-  respuestasDepresion[index] = respuesta;
+  respuestasDepresion.push(respuesta);
 
-  const preguntas = [
-    "¿Poco interés o placer en hacer cosas?",
-    "¿Te has sentido decaído, deprimido o sin esperanza?",
-    "¿Dificultad para dormir o dormir demasiado?",
-    "¿Te has sentido cansado o con poca energía?",
-    "¿Te has sentido mal contigo mismo, que eres un fracaso o que has quedado mal contigo o tu familia?",
-    "¿Dificultad para concentrarte en actividades como leer o ver televisión?",
-    "¿Te has movido o hablado tan lento que otras personas lo notaron? ¿O lo contrario: estar tan inquieto que te cuesta estar quieto?",
-    "¿Has tenido pensamientos de que estarías mejor muerto o de hacerte daño de alguna manera?",
-    "¿Qué tan difícil han hecho estos problemas tu vida diaria (trabajo, hogar, relaciones)?"
-  ];
-
-  if (index < preguntas.length - 1) {
-    const siguientePregunta = preguntas[index + 1];
+  if (index < preguntasDepresion.length - 1) {
+    index += 1;
     agent.context.set({
-      name: 'conteo_preguntas_depresion',
-      lifespan: 20,
-      parameters: { index: index + 1 }
+      name: 'contexto_pregunta_depresion',
+      lifespan: 10,
+      parameters: { index }
     });
-    agent.add(`SIGUIENTE PREGUNTA:\n${siguientePregunta}\n(Responde del 0 al 3)`);
+
+    const nuevaPregunta = preguntasDepresion[index];
+    agent.add(`\n${nuevaPregunta}\n(Responde del 0 al 3)`);
   } else {
+    // Calcular puntaje total
     const total = respuestasDepresion.reduce((a, b) => a + b, 0);
     const nivel = interpretarDepresion(total);
 
-    const datosAlumno = agent.context.get('contexto_datos_alumno')?.parameters || {};
-    const nombre = datosAlumno.nombre || "Alumno";
-    const edad = datosAlumno.edad || "N/D";
-    const celular = datosAlumno.celular_apoderado || "N/D";
+    const alumno = agent.getContext('contexto_datos_alumno')?.parameters || {};
+    const nombre = alumno.nombre || 'Alumno';
+    const edad = alumno.edad || 'N/D';
+    const celular = alumno.celular_apoderado || 'N/D';
 
-    agent.add(`✅ *Resultado del test PHQ-9 (Depresión)*\n👤 Nombre: ${nombre}\n🎂 Edad: ${edad}\n📞 Apoderado: ${celular}\n📊 Puntaje total: *${total}*\n🧠 Nivel: *${nivel}*`);
+    agent.add(`✅ *Resultado del test PHQ-9:*\n👤 Nombre: ${nombre}\n🎂 Edad: ${edad}\n📞 Apoderado: ${celular}\n📊 Puntaje: *${total}*\n🧠 Nivel de depresión: *${nivel}*`);
 
+    // Guardar contexto para siguiente bloque
     agent.setContext({
       name: 'contexto_depresion',
-      lifespan: 5,
+      lifespan: 10,
       parameters: { total }
     });
 
+    agent.add(`¿Deseas continuar con el siguiente bloque (ansiedad)? (Responde: sí / no)`);
+
     // Preparar siguiente bloque
-    agent.add(`¿Deseas continuar con el siguiente bloque sobre *Ansiedad (GAD-7)*? (Responde: sí / no)`);
     agent.setContext({
       name: 'contexto_ansiedad_inicio',
       lifespan: 5
@@ -102,19 +111,20 @@ function bloqueDepresion(agent) {
 // === INTENT MAP ===
 app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
-  console.log('🧠 Webhook recibido');
+  console.log('✅ Webhook recibido');
 
-  let intentMap = new Map();
+  const intentMap = new Map();
   intentMap.set('inicio_diagnostico', inicioDiagnostico);
   intentMap.set('bloque_depresion', bloqueDepresion);
 
   agent.handleRequest(intentMap);
 });
 
-// === INICIO DE SERVIDOR ===
+// === INICIO SERVIDOR ===
 app.listen(port, () => {
-  console.log(`🚀 Servidor corriendo en puerto ${port}`);
+  console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
