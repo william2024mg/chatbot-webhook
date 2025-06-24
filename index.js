@@ -22,33 +22,44 @@ function interpretarDepresion(p) {
 
 // === INICIO DIAGNÓSTICO ===
 function inicioDiagnostico(agent) {
-  const params = agent.parameters || {};
-  const nombre = params.nombre || "N/D";
-  const edad = params.edad || "N/D";
-  const celular_apoderado = params.celular_apoderado || "N/D";
+  try {
+    const { nombre, edad, celular_apoderado } = agent.parameters || {};
 
-  agent.context.set({
-    name: 'contexto_datos_alumno',
-    lifespan: 50,
-    parameters: { nombre, edad, celular_apoderado }
-  });
+    if (!nombre || !edad || !celular_apoderado) {
+      agent.add("Faltan algunos datos. Por favor ingresa tu nombre, edad y celular del apoderado.");
+      return;
+    }
 
-  agent.add(`✅ Datos registrados:
+    // ✅ Establecer contexto con datos del alumno
+    agent.setContext({
+      name: 'contexto_datos_alumno',
+      lifespan: 50,
+      parameters: { nombre, edad, celular_apoderado }
+    });
+
+    // ✅ Establecer inicio del bloque de depresión
+    agent.setContext({
+      name: 'conteo_preguntas_depresion',
+      lifespan: 10,
+      parameters: { index: 0 }
+    });
+
+    // ✅ Mensaje inicial y PRIMERA pregunta PHQ-9
+    agent.add(`✅ Datos registrados:
 • Nombre: ${nombre}
 • Edad: ${edad}
 • Celular del apoderado: ${celular_apoderado}
 
-Empecemos con la evaluación. 🧠`);
+Iniciemos con la evaluación de depresión.`);
 
-  // Activamos el contexto para el siguiente intent: bloque_depresion
-  agent.setContext({
-    name: 'conteo_preguntas_depresion',
-    lifespan: 10,
-    parameters: { index: 0 }
-  });
+    agent.add("🧠 *Evaluación de Depresión (PHQ-9)*\n\nPRIMERA PREGUNTA:\n¿Poco interés o placer en hacer cosas?\n(Responde con un número del 0 al 3)\n\n0 = Nada en absoluto\n1 = Varios días\n2 = Más de la mitad de los días\n3 = Casi todos los días");
 
-  agent.add("🧠 *Evaluación de Depresión (PHQ-9)*\n\nPRIMERA PREGUNTA:\n¿Poco interés o placer en hacer cosas?\n(Responde con un número del 0 al 3)\n\n0 = Nada en absoluto\n1 = Varios días\n2 = Más de la mitad de los días\n3 = Casi todos los días");
+  } catch (error) {
+    console.error("❌ Error en inicioDiagnostico:", error);
+    agent.add("Ocurrió un problema al registrar tus datos. Inténtalo nuevamente.");
+  }
 }
+
 
 // === PREGUNTAS PHQ-9 ===
 const preguntasDepresion = [
@@ -78,7 +89,7 @@ function bloqueDepresion(agent) {
 
   if (index < preguntasDepresion.length - 1) {
     index += 1;
-    agent.context.set({
+    agent.setContext({
       name: 'contexto_pregunta_depresion',
       lifespan: 10,
       parameters: { index }
