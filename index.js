@@ -99,6 +99,63 @@ function bloqueDepresion(agent) {
     });
   }
 }
+function resultadoDepresion(agent) {
+  const context = agent.getContext('contexto_resultado_depresion');
+
+  // Extraer todos los valores desde los contextos acumulados
+  const p1 = parseInt(context?.parameters?.p1_depresion || 0);
+  const p2 = parseInt(context?.parameters?.p2_depresion || 0);
+  const p3 = parseInt(context?.parameters?.p3_depresion || 0);
+  const p4 = parseInt(context?.parameters?.p4_depresion || 0);
+  const p5 = parseInt(context?.parameters?.p5_depresion || 0);
+  const p6 = parseInt(context?.parameters?.p6_depresion || 0);
+  const p7 = parseInt(context?.parameters?.p7_depresion || 0);
+  const p8 = parseInt(context?.parameters?.p8_depresion || 0);
+  const p9 = parseInt(context?.parameters?.p9_depresion || 0);
+agent.add("Gracias por tus respuestas. Ahora voy a calcular tus resultados. Un momento por favor...");
+agent.setContext({
+  name: 'contexto_resultado_depresion',
+  lifespan: 1,
+  parameters: {
+    p1_depresion: agent.context.get('contexto_pregunta1_depresion')?.parameters?.p1_depresion || 0,
+    p2_depresion: agent.context.get('contexto_pregunta2_depresion')?.parameters?.p2_depresion || 0,
+    p3_depresion: agent.context.get('contexto_pregunta3_depresion')?.parameters?.p3_depresion || 0,
+    p4_depresion: agent.context.get('contexto_pregunta4_depresion')?.parameters?.p4_depresion || 0,
+    p5_depresion: agent.context.get('contexto_pregunta5_depresion')?.parameters?.p5_depresion || 0,
+    p6_depresion: agent.context.get('contexto_pregunta6_depresion')?.parameters?.p6_depresion || 0,
+    p7_depresion: agent.context.get('contexto_pregunta7_depresion')?.parameters?.p7_depresion || 0,
+    p8_depresion: agent.context.get('contexto_pregunta8_depresion')?.parameters?.p8_depresion || 0,
+    p9_depresion: agent.parameters.p9_depresion || 0
+  }
+});
+  const total = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+
+  let interpretacion = '';
+  if (total <= 4) interpretacion = 'Depresión mínima';
+  else if (total <= 9) interpretacion = 'Depresión leve';
+  else if (total <= 14) interpretacion = 'Depresión moderada';
+  else if (total <= 19) interpretacion = 'Depresión moderadamente severa';
+  else interpretacion = 'Depresión severa';
+
+  agent.add(`✅ *Resultado del test PHQ-9 (Depresión)*`);
+  agent.add(`Puntaje total: *${total}*`);
+  agent.add(`Nivel: *${interpretacion}*`);
+
+  // Guardar total en contexto para resumen final
+  agent.setContext({
+    name: 'contexto_depresion',
+    lifespan: 10,
+    parameters: { total }
+  });
+
+  // Activar siguiente bloque: ansiedad
+  agent.add(`¿Deseas continuar con el siguiente bloque sobre *ansiedad*? (Responde: sí / no)`);
+  agent.setContext({
+    name: 'contexto_ansiedad_inicio',
+    lifespan: 5
+  });
+}
+
 
 // === INTENT MAP ===
 app.post('/webhook', (req, res) => {
