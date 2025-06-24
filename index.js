@@ -22,7 +22,8 @@ function interpretarDepresion(p) {
 
 // === INICIO DIAGNÓSTICO ===
 function inicioDiagnostico(agent) {
-  const { nombre, edad, celular_apoderado } = agent.parameters;
+ const parameters = agent.parameters || {};
+const { nombre, edad, celular_apoderado } = parameters;  
   agent.context.set({
     name: 'contexto_datos_alumno',
     lifespan: 30,
