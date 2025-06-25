@@ -2,16 +2,17 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { WebhookClient } = require('dialogflow-fulfillment');
-const app = express();
 
-process.env.DEBUG = 'dialogflow:debug';
+const app = express();
 const port = process.env.PORT || 3000;
+process.env.DEBUG = 'dialogflow:debug';
+
 app.use(bodyParser.json());
 
-// === VARIABLES GLOBALES ===
-let respuestasDepresion = [];
+// === VARIABLES GLOBALES POR SESIÓN ===
+let sesiones = {}; // Objeto para almacenar info por sesión
 
-// === INTERPRETACIÓN ===
+// === INTERPRETACIÓN DE PUNTAJE DE DEPRESIÓN ===
 function interpretarDepresion(p) {
   if (p <= 4) return "mínima o nula";
   if (p <= 9) return "leve";
@@ -20,68 +21,83 @@ function interpretarDepresion(p) {
   return "severa";
 }
 
-// === INICIO DIAGNÓSTICO ===
+// === INICIO DEL DIAGNÓSTICO ===
 function inicioDiagnostico(agent) {
-  try {
-    // Limpiar todo al iniciar
-    respuestasDepresion = [];
+  const sessionId = agent.session.split('/').pop();
 
-    // Limpiar contextos antiguos
-    agent.clearOutgoingContexts();
+  // Limpiar toda la información previa
+  sesiones[sessionId] = {
+    respuestasDepresion: [],
+    datosAlumno: {
+      nombre: null,
+      edad: null,
+      celular_apoderado: null
+    },
+    index: 0
+  };
 
-    agent.setContext({
-      name: 'contexto_datos_alumno_solicitud',
-      lifespan: 5
-    });
+  agent.setContext({
+    name: 'contexto_datos_alumno_solicitud',
+    lifespan: 5
+  });
 
-    agent.add("Vamos a iniciar el diagnóstico. Primero necesito algunos datos.");
-    agent.add("¿Cuál es tu nombre?");
-  } catch (error) {
-    console.error("❌ Error en inicioDiagnostico:", error);
-    agent.add("Ocurrió un error al iniciar. Intenta nuevamente.");
-  }
+  agent.add("👋 Hola, empecemos con el diagnóstico.\n\nPor favor, dime tu *nombre*:");
 }
 
-// === RECOLECTAR DATOS ALUMNO ===
+// === RECOLECTAR DATOS DEL ALUMNO ===
 function recolectarDatosAlumno(agent) {
-  try {
-    const { nombre, edad, celular_apoderado } = agent.parameters || {};
+  const sessionId = agent.session.split('/').pop();
+  const input = agent.query;
+  const sesion = sesiones[sessionId];
+
+  if (!sesion) {
+    agent.add("❌ No se pudo continuar. Por favor escribe 'inicio' para empezar nuevamente.");
+    return;
+  }
+
+  const datos = sesion.datosAlumno;
+
+  if (!datos.nombre) {
+    datos.nombre = input;
+    agent.add("✅ Gracias. Ahora dime tu *edad*:");
+    return;
+  }
+
+  if (!datos.edad) {
+    const edadNum = parseInt(input);
+    if (isNaN(edadNum) || edadNum < 5 || edadNum > 120) {
+      agent.add("⚠️ Por favor ingresa una edad válida:");
+      return;
+    }
+    datos.edad = edadNum;
+    agent.add("Perfecto. Ahora ingresa el *celular del apoderado*:");
+    return;
+  }
+
+  if (!datos.celular_apoderado) {
+    if (!/^\d{9}$/.test(input)) {
+      agent.add("⚠️ Por favor, ingresa un número válido de 9 dígitos:");
+      return;
+    }
+    datos.celular_apoderado = input;
+
+    agent.add(`✅ *Datos registrados:*
+• Nombre: ${datos.nombre}
+• Edad: ${datos.edad}
+• Celular Apoderado: ${datos.celular_apoderado}`);
+
+    agent.add("\n¿Deseas comenzar con la evaluación de depresión? (Responde: *sí* o *no*)");
 
     agent.setContext({
-      name: 'contexto_datos_alumno',
-      lifespan: 50,
-      parameters: { nombre, edad, celular_apoderado }
-    });
-
-    // Iniciar índice de preguntas
-    respuestasDepresion = [];
-    agent.setContext({
-      name: 'contexto_pregunta_depresion',
-      lifespan: 10,
-      parameters: { index: 0 }
-    });
-
-    // Activar bloque_depresion
-    agent.setContext({
-      name: 'contexto_depresion_inicio',
+      name: 'contexto_confirmar_depresion',
       lifespan: 5
     });
 
-    agent.add(`✅ Datos registrados:
-• Nombre: ${nombre}
-• Edad: ${edad}
-• Celular del apoderado: ${celular_apoderado}
-
-Iniciemos con la evaluación de depresión.`);
-
-    agent.add("🧠 *Evaluación de Depresión (PHQ-9)*\n\nPRIMERA PREGUNTA:\n¿Poco interés o placer en hacer cosas?\n(Responde con un número del 0 al 3)\n\n0 = Nada en absoluto\n1 = Varios días\n2 = Más de la mitad de los días\n3 = Casi todos los días");
-  } catch (error) {
-    console.error("❌ Error en recolectarDatosAlumno:", error);
-    agent.add("Ocurrió un error al registrar tus datos. Intenta nuevamente.");
+    return;
   }
 }
 
-// === PREGUNTAS PHQ-9 ===
+// === BLOQUE DE DEPRESIÓN ===
 const preguntasDepresion = [
   "¿Poco interés o placer en hacer cosas?",
   "¿Te has sentido decaído, deprimido o sin esperanza?",
@@ -94,80 +110,61 @@ const preguntasDepresion = [
   "¿Qué tan difícil han hecho estos problemas tu vida diaria?"
 ];
 
-// === BLOQUE DEPRESIÓN ===
 function bloqueDepresion(agent) {
-  try {
-    const context = agent.getContext('contexto_pregunta_depresion');
-    let index = context?.parameters?.index || 0;
-    const respuesta = parseInt(agent.query);
+  const sessionId = agent.session.split('/').pop();
+  const sesion = sesiones[sessionId];
 
-    if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
-      agent.add("⚠️ Por favor, responde con un número del 0 al 3.");
-      return;
-    }
+  if (!sesion) {
+    agent.add("❌ No se encontró tu sesión. Escribe 'inicio' para comenzar.");
+    return;
+  }
 
-    respuestasDepresion.push(respuesta);
+  const respuesta = parseInt(agent.query);
+  if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
+    agent.add("⚠️ Por favor responde con un número del 0 al 3.");
+    return;
+  }
 
-    if (index < preguntasDepresion.length - 1) {
-      index += 1;
-      agent.setContext({
-        name: 'contexto_pregunta_depresion',
-        lifespan: 10,
-        parameters: { index }
-      });
+  sesion.respuestasDepresion.push(respuesta);
+  sesion.index++;
 
-      const nuevaPregunta = preguntasDepresion[index];
-      agent.add(`\n${nuevaPregunta}\n(Responde con un número del 0 al 3)`);
-    } else {
-      const total = respuestasDepresion.reduce((a, b) => a + b, 0);
-      const nivel = interpretarDepresion(total);
+  if (sesion.index < preguntasDepresion.length) {
+    const pregunta = preguntasDepresion[sesion.index];
+    agent.add(`📍 *Pregunta ${sesion.index + 1}*:\n${pregunta}\n\n(Responde del 0 al 3)`);
+  } else {
+    const total = sesion.respuestasDepresion.reduce((a, b) => a + b, 0);
+    const nivel = interpretarDepresion(total);
+    const alumno = sesion.datosAlumno;
 
-      const alumno = agent.getContext('contexto_datos_alumno')?.parameters || {};
-      const nombre = alumno.nombre || 'Alumno';
-      const edad = alumno.edad || 'N/D';
-      const celular = alumno.celular_apoderado || 'N/D';
+    agent.add(`✅ *Resultado PHQ-9:*
+👤 Nombre: ${alumno.nombre}
+🎂 Edad: ${alumno.edad}
+📞 Apoderado: ${alumno.celular_apoderado}
+📊 Puntaje: *${total}*
+🧠 Nivel de depresión: *${nivel}*`);
 
-      agent.add(`✅ *Resultado del test PHQ-9:*\n👤 Nombre: ${nombre}\n🎂 Edad: ${edad}\n📞 Apoderado: ${celular}\n📊 Puntaje: *${total}*\n🧠 Nivel de depresión: *${nivel}*`);
-
-      agent.setContext({
-        name: 'contexto_depresion',
-        lifespan: 10,
-        parameters: { total }
-      });
-
-      agent.add("¿Deseas continuar con el siguiente bloque (ansiedad)? (Responde: sí / no)");
-      agent.setContext({
-        name: 'contexto_ansiedad_inicio',
-        lifespan: 5
-      });
-    }
-  } catch (error) {
-    console.error("❌ Error en bloqueDepresion:", error);
-    agent.add("Ocurrió un error durante la evaluación. Intenta nuevamente.");
+    agent.add("¿Deseas continuar con el siguiente bloque (ansiedad)? (sí / no)");
   }
 }
 
-// === INTENT MAP ===
+// === CONFIGURAR INTENTS ===
 app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
-  console.log('✅ Webhook recibido');
-
-  if (!agent.requestSource) {
-    agent.requestSource = 'PLATFORM_UNSPECIFIED';
-  }
+  console.log("✅ Webhook recibido");
 
   const intentMap = new Map();
-  intentMap.set('inicio_diagnostico', inicioDiagnostico);
-  intentMap.set('recolectar_datos_alumno', recolectarDatosAlumno);
-  intentMap.set('bloque_depresion', bloqueDepresion);
+  intentMap.set("inicio_diagnostico", inicioDiagnostico);
+  intentMap.set("recolectar_datos_alumno", recolectarDatosAlumno);
+  intentMap.set("bloque_depresion", bloqueDepresion);
 
   agent.handleRequest(intentMap);
 });
 
-// === INICIO SERVIDOR ===
+// === INICIAR SERVIDOR ===
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
