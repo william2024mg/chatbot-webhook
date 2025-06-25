@@ -22,44 +22,71 @@ function interpretarDepresion(p) {
 
 // === INICIO DIAGNÓSTICO ===
 function inicioDiagnostico(agent) {
-  const context = agent.getContext('contexto_datos_alumno') || {};
-  const datos = context.parameters || {};
-  const mensaje = agent.query.toLowerCase();
+  const mensaje = agent.query.trim().toLowerCase();
+  const ctx = agent.getContext('contexto_datos_alumno');
+  const datos = ctx?.parameters || {};
 
+  // 1. No hay nombre
   if (!datos.nombre) {
-    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 10, parameters: {} });
-    agent.add("Por favor, escribe tu nombre:");
-  } else if (!datos.edad) {
-    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 10, parameters: { ...datos, nombre: agent.query } });
+    agent.setContext({
+      name: 'contexto_datos_alumno',
+      lifespan: 10,
+      parameters: { ...datos, nombre: agent.query }
+    });
     agent.add("¿Cuál es tu edad?");
-  } else if (!datos.celular_apoderado) {
-    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 10, parameters: { ...datos, edad: parseInt(agent.query) } });
+    return;
+  }
+
+  // 2. No hay edad
+  if (!datos.edad) {
+    const edad = parseInt(agent.query);
+    if (isNaN(edad)) {
+      agent.add("Por favor, responde con tu edad en número.");
+      return;
+    }
+    agent.setContext({
+      name: 'contexto_datos_alumno',
+      lifespan: 10,
+      parameters: { ...datos, edad }
+    });
     agent.add("¿Cuál es el número de celular de tu apoderado?");
-  } else if (!datos.confirmacion) {
+    return;
+  }
+
+  // 3. No hay celular
+  if (!datos.celular_apoderado) {
     agent.setContext({
       name: 'contexto_datos_alumno',
       lifespan: 10,
       parameters: { ...datos, celular_apoderado: agent.query }
     });
-
     agent.add(`✅ Datos registrados:
 • Nombre: ${datos.nombre}
 • Edad: ${datos.edad}
 • Celular del apoderado: ${agent.query}
-
 ¿Deseas comenzar con la evaluación de depresión? (Responde: sí / no)`);
-  } else if (mensaje === 'sí') {
-    // Confirmación positiva -> activar preguntas
+    return;
+  }
+
+  // 4. Confirmar si quiere continuar
+  if (mensaje === 'sí') {
     respuestasDepresion = [];
-    agent.setContext({ name: 'contexto_pregunta_depresion', lifespan: 10, parameters: { index: 0 } });
+    agent.setContext({
+      name: 'contexto_pregunta_depresion',
+      lifespan: 10,
+      parameters: { index: 0 }
+    });
 
     const primera = preguntasDepresion[0];
     agent.add("🧠 *Evaluación de Depresión (PHQ-9)*");
     agent.add(`PRIMERA PREGUNTA:\n${primera}\n(Responde con un número del 0 al 3)`);
+  } else if (mensaje === 'no') {
+    agent.add("Perfecto, puedes iniciar la evaluación más tarde.");
   } else {
-    agent.add("Perfecto, puedes iniciar la evaluación en otro momento cuando estés listo.");
+    agent.add("¿Deseas comenzar con la evaluación de depresión? (Responde: sí / no)");
   }
 }
+
 
 // === PREGUNTAS PHQ-9 ===
 const preguntasDepresion = [
