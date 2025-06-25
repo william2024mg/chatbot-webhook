@@ -37,11 +37,17 @@ function inicioDiagnostico(agent) {
       parameters: { nombre, edad, celular_apoderado }
     });
 
-    // ✅ Establecer inicio del bloque de depresión
+    // ✅ Establecer contexto para manejar el índice de preguntas
     agent.setContext({
-      name: 'conteo_preguntas_depresion',
+      name: 'contexto_pregunta_depresion',
       lifespan: 10,
       parameters: { index: 0 }
+    });
+
+    // ✅ Establecer contexto para activar el intent bloque_depresion
+    agent.setContext({
+      name: 'contexto_depresion_inicio',
+      lifespan: 5
     });
 
     // ✅ Mensaje inicial y PRIMERA pregunta PHQ-9
@@ -49,8 +55,7 @@ function inicioDiagnostico(agent) {
 • Nombre: ${nombre}
 • Edad: ${edad}
 • Celular del apoderado: ${celular_apoderado}
-
-Iniciemos con la evaluación de depresión.`);
+\nIniciemos con la evaluación de depresión.`);
 
     agent.add("🧠 *Evaluación de Depresión (PHQ-9)*\n\nPRIMERA PREGUNTA:\n¿Poco interés o placer en hacer cosas?\n(Responde con un número del 0 al 3)\n\n0 = Nada en absoluto\n1 = Varios días\n2 = Más de la mitad de los días\n3 = Casi todos los días");
 
@@ -98,7 +103,6 @@ function bloqueDepresion(agent) {
     const nuevaPregunta = preguntasDepresion[index];
     agent.add(`\n${nuevaPregunta}\n(Responde del 0 al 3)`);
   } else {
-    // Calcular puntaje total
     const total = respuestasDepresion.reduce((a, b) => a + b, 0);
     const nivel = interpretarDepresion(total);
 
@@ -109,7 +113,7 @@ function bloqueDepresion(agent) {
 
     agent.add(`✅ *Resultado del test PHQ-9:*\n👤 Nombre: ${nombre}\n🎂 Edad: ${edad}\n📞 Apoderado: ${celular}\n📊 Puntaje: *${total}*\n🧠 Nivel de depresión: *${nivel}*`);
 
-    // Guardar contexto para siguiente bloque
+    // Guardar contexto con resultado
     agent.setContext({
       name: 'contexto_depresion',
       lifespan: 10,
@@ -142,6 +146,7 @@ app.post('/webhook', (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
