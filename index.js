@@ -2,6 +2,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { WebhookClient } = require('dialogflow-fulfillment');
+agent.requestSource = agent.ACTIONS_ON_GOOGLE; // o usa 'PLATFORM_UNSPECIFIED'
 const app = express();
 
 process.env.DEBUG = 'dialogflow:debug';
@@ -58,12 +59,12 @@ function inicioDiagnostico(agent) {
 \nIniciemos con la evaluación de depresión.`);
 
     agent.add("🧠 *Evaluación de Depresión (PHQ-9)*\n\nPRIMERA PREGUNTA:\n¿Poco interés o placer en hacer cosas?\n(Responde con un número del 0 al 3)\n\n0 = Nada en absoluto\n1 = Varios días\n2 = Más de la mitad de los días\n3 = Casi todos los días");
-
+console.log("✅ inicioDiagnostico ejecutado correctamente");
   } catch (error) {
     console.error("❌ Error en inicioDiagnostico:", error);
     agent.add("Ocurrió un problema al registrar tus datos. Inténtalo nuevamente.");
   }
-  console.log("✅ inicioDiagnostico ejecutado correctamente");
+  
 }
 
 
@@ -135,6 +136,11 @@ function bloqueDepresion(agent) {
 app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
   console.log('✅ Webhook recibido');
+
+  // Forzar respuesta genérica para consola
+  if (!agent.requestSource) {
+    agent.requestSource = 'PLATFORM_UNSPECIFIED';
+  }
 
   const intentMap = new Map();
   intentMap.set('inicio_diagnostico', inicioDiagnostico);
