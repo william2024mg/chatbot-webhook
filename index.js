@@ -2,7 +2,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { WebhookClient } = require('dialogflow-fulfillment');
-agent.requestSource = agent.ACTIONS_ON_GOOGLE; // o usa 'PLATFORM_UNSPECIFIED'
 const app = express();
 
 process.env.DEBUG = 'dialogflow:debug';
@@ -137,9 +136,9 @@ app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
   console.log('✅ Webhook recibido');
 
-  // Forzar respuesta genérica para consola
+  // ✅ Asegurar que no falle con DIALOGFLOW_CONSOLE
   if (!agent.requestSource) {
-    agent.requestSource = 'PLATFORM_UNSPECIFIED';
+    agent.requestSource = 'PLATFORM_UNSPECIFIED'; // o 'ACTIONS_ON_GOOGLE' si prefieres
   }
 
   const intentMap = new Map();
