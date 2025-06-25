@@ -10,9 +10,8 @@ app.use(bodyParser.json());
 
 // === VARIABLES GLOBALES ===
 let respuestasDepresion = [];
-let datosAlumno = { nombre: null, edad: null, celular_apoderado: null };
 
-// === INTERPRETACIÓN DE RESULTADO ===
+// === INTERPRETACIÓN ===
 function interpretarDepresion(p) {
   if (p <= 4) return "mínima o nula";
   if (p <= 9) return "leve";
@@ -21,87 +20,68 @@ function interpretarDepresion(p) {
   return "severa";
 }
 
-// === INICIO_DIAGNOSTICO ===
+// === INICIO DIAGNÓSTICO ===
 function inicioDiagnostico(agent) {
   try {
-    // Reiniciar todo
+    // Limpiar todo al iniciar
     respuestasDepresion = [];
-    datosAlumno = { nombre: null, edad: null, celular_apoderado: null };
 
-    // Limpiar contextos anteriores
+    // Limpiar contextos antiguos
     agent.clearOutgoingContexts();
 
-    // Crear contexto nuevo para recolectar los datos
     agent.setContext({
-      name: 'contexto_datos_alumno',
-      lifespan: 5,
-      parameters: {}
+      name: 'contexto_datos_alumno_solicitud',
+      lifespan: 5
     });
 
-    agent.add("📝 Iniciemos con tus datos. ¿Cuál es tu *nombre*?");
-    console.log("🟢 inicioDiagnostico llamado");
+    agent.add("Vamos a iniciar el diagnóstico. Primero necesito algunos datos.");
+    agent.add("¿Cuál es tu nombre?");
   } catch (error) {
     console.error("❌ Error en inicioDiagnostico:", error);
-    agent.add("Ocurrió un problema al iniciar el diagnóstico.");
+    agent.add("Ocurrió un error al iniciar. Intenta nuevamente.");
   }
 }
 
-// === RECOLECCIÓN DE DATOS (nombre, edad, celular) ===
-function recolectarDatos(agent) {
-  const context = agent.getContext('contexto_datos_alumno');
-  const input = agent.query;
+// === RECOLECTAR DATOS ALUMNO ===
+function recolectarDatosAlumno(agent) {
+  try {
+    const { nombre, edad, celular_apoderado } = agent.parameters || {};
 
-  if (!context.parameters.nombre) {
-    context.parameters.nombre = input;
-    agent.setContext({ ...context, lifespan: 5 });
-    agent.add("📅 Gracias. Ahora dime, ¿cuántos años tienes?");
-    return;
-  }
+    agent.setContext({
+      name: 'contexto_datos_alumno',
+      lifespan: 50,
+      parameters: { nombre, edad, celular_apoderado }
+    });
 
-  if (!context.parameters.edad) {
-    const edad = parseInt(input);
-    if (isNaN(edad)) {
-      agent.add("⚠️ Por favor, indica tu edad como número.");
-      return;
-    }
-    context.parameters.edad = edad;
-    agent.setContext({ ...context, lifespan: 5 });
-    agent.add("📱 Gracias. Finalmente, ¿cuál es el número de celular de tu apoderado?");
-    return;
-  }
+    // Iniciar índice de preguntas
+    respuestasDepresion = [];
+    agent.setContext({
+      name: 'contexto_pregunta_depresion',
+      lifespan: 10,
+      parameters: { index: 0 }
+    });
 
-  if (!context.parameters.celular_apoderado) {
-    context.parameters.celular_apoderado = input;
-    agent.setContext({ ...context, lifespan: 50 });
-
-    const { nombre, edad, celular_apoderado } = context.parameters;
-    datosAlumno = { nombre, edad, celular_apoderado };
-
-    agent.add(`✅ Datos registrados:
-• Nombre: ${nombre}
-• Edad: ${edad}
-• Celular apoderado: ${celular_apoderado}`);
-
-    agent.add("¿Deseas iniciar la evaluación de *depresión* (PHQ-9)? (Responde: sí / no)");
-
+    // Activar bloque_depresion
     agent.setContext({
       name: 'contexto_depresion_inicio',
       lifespan: 5
     });
 
-    agent.setContext({
-      name: 'contexto_pregunta_depresion',
-      lifespan: 5,
-      parameters: { index: 0 }
-    });
+    agent.add(`✅ Datos registrados:
+• Nombre: ${nombre}
+• Edad: ${edad}
+• Celular del apoderado: ${celular_apoderado}
 
-    return;
+Iniciemos con la evaluación de depresión.`);
+
+    agent.add("🧠 *Evaluación de Depresión (PHQ-9)*\n\nPRIMERA PREGUNTA:\n¿Poco interés o placer en hacer cosas?\n(Responde con un número del 0 al 3)\n\n0 = Nada en absoluto\n1 = Varios días\n2 = Más de la mitad de los días\n3 = Casi todos los días");
+  } catch (error) {
+    console.error("❌ Error en recolectarDatosAlumno:", error);
+    agent.add("Ocurrió un error al registrar tus datos. Intenta nuevamente.");
   }
-
-  agent.add("❌ Hubo un error al registrar tus datos. Intenta de nuevo.");
 }
 
-// === BLOQUE DEPRESIÓN ===
+// === PREGUNTAS PHQ-9 ===
 const preguntasDepresion = [
   "¿Poco interés o placer en hacer cosas?",
   "¿Te has sentido decaído, deprimido o sin esperanza?",
@@ -114,6 +94,7 @@ const preguntasDepresion = [
   "¿Qué tan difícil han hecho estos problemas tu vida diaria?"
 ];
 
+// === BLOQUE DEPRESIÓN ===
 function bloqueDepresion(agent) {
   try {
     const context = agent.getContext('contexto_pregunta_depresion');
@@ -121,7 +102,7 @@ function bloqueDepresion(agent) {
     const respuesta = parseInt(agent.query);
 
     if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
-      agent.add("⚠️ Por favor, responde con un número entre 0 y 3.");
+      agent.add("⚠️ Por favor, responde con un número del 0 al 3.");
       return;
     }
 
@@ -135,42 +116,55 @@ function bloqueDepresion(agent) {
         parameters: { index }
       });
 
-      agent.add(`🧠 *Pregunta ${index + 1}*:\n${preguntasDepresion[index]}\n\n(0 = Nada en absoluto, 1 = Varios días, 2 = Más de la mitad de los días, 3 = Casi todos los días)`);
+      const nuevaPregunta = preguntasDepresion[index];
+      agent.add(`\n${nuevaPregunta}\n(Responde con un número del 0 al 3)`);
     } else {
       const total = respuestasDepresion.reduce((a, b) => a + b, 0);
       const nivel = interpretarDepresion(total);
 
-      const { nombre, edad, celular_apoderado } = datosAlumno;
+      const alumno = agent.getContext('contexto_datos_alumno')?.parameters || {};
+      const nombre = alumno.nombre || 'Alumno';
+      const edad = alumno.edad || 'N/D';
+      const celular = alumno.celular_apoderado || 'N/D';
 
-      agent.add(`✅ *Resultado del test PHQ-9:*
-👤 Nombre: ${nombre}
-🎂 Edad: ${edad}
-📞 Apoderado: ${celular_apoderado}
-📊 Puntaje: *${total}*
-🧠 Nivel de depresión: *${nivel}*`);
+      agent.add(`✅ *Resultado del test PHQ-9:*\n👤 Nombre: ${nombre}\n🎂 Edad: ${edad}\n📞 Apoderado: ${celular}\n📊 Puntaje: *${total}*\n🧠 Nivel de depresión: *${nivel}*`);
+
+      agent.setContext({
+        name: 'contexto_depresion',
+        lifespan: 10,
+        parameters: { total }
+      });
 
       agent.add("¿Deseas continuar con el siguiente bloque (ansiedad)? (Responde: sí / no)");
+      agent.setContext({
+        name: 'contexto_ansiedad_inicio',
+        lifespan: 5
+      });
     }
   } catch (error) {
     console.error("❌ Error en bloqueDepresion:", error);
-    agent.add("Hubo un error durante la evaluación de depresión.");
+    agent.add("Ocurrió un error durante la evaluación. Intenta nuevamente.");
   }
 }
 
-// === MAPEO DE INTENTS ===
+// === INTENT MAP ===
 app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
-  console.log('📩 Webhook recibido');
+  console.log('✅ Webhook recibido');
+
+  if (!agent.requestSource) {
+    agent.requestSource = 'PLATFORM_UNSPECIFIED';
+  }
 
   const intentMap = new Map();
   intentMap.set('inicio_diagnostico', inicioDiagnostico);
-  intentMap.set('recolectar_datos_alumno', recolectarDatos);
+  intentMap.set('recolectar_datos_alumno', recolectarDatosAlumno);
   intentMap.set('bloque_depresion', bloqueDepresion);
 
   agent.handleRequest(intentMap);
 });
 
-// === INICIAR SERVIDOR ===
+// === INICIO SERVIDOR ===
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
