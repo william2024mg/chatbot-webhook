@@ -8,154 +8,28 @@ process.env.DEBUG = 'dialogflow:debug';
 const port = process.env.PORT || 3000;
 app.use(bodyParser.json());
 
-// === VARIABLES GLOBALES ===
-let respuestasDepresion = []; // Resetear por sesión sería ideal en futuro
-
-// === INTERPRETACIÓN ===
-function interpretarDepresion(p) {
-  if (p <= 4) return "mínima o nula";
-  if (p <= 9) return "leve";
-  if (p <= 14) return "moderada";
-  if (p <= 19) return "moderadamente severa";
-  return "severa";
+// === INTENT DE PRUEBA SIMPLE ===
+function pruebaWebhook(agent) {
+  console.log("✅ Webhook está funcionando correctamente.");
+  agent.add("👋 Hola desde el webhook. Todo está bien.");
 }
 
-// === INICIO DIAGNÓSTICO ===
-function inicioDiagnostico(agent) {
-  try {
-    const { nombre, edad, celular_apoderado } = agent.parameters || {};
-
-    if (!nombre || !edad || !celular_apoderado) {
-      agent.add("Faltan algunos datos. Por favor ingresa tu nombre, edad y celular del apoderado.");
-      return;
-    }
-
-    // Guardar contexto del alumno
-    agent.setContext({
-      name: 'contexto_datos_alumno',
-      lifespan: 50,
-      parameters: { nombre, edad, celular_apoderado }
-    });
-
-    // Iniciar índice de preguntas
-    respuestasDepresion = []; // Reiniciar respuestas
-    agent.setContext({
-      name: 'contexto_pregunta_depresion',
-      lifespan: 10,
-      parameters: { index: 0 }
-    });
-
-    // Activar bloque_depresion
-    agent.setContext({
-      name: 'contexto_depresion_inicio',
-      lifespan: 5
-    });
-
-    // Primer mensaje y pregunta
-    agent.add(`✅ Datos registrados:
-• Nombre: ${nombre}
-• Edad: ${edad}
-• Celular del apoderado: ${celular_apoderado}
-
-Iniciemos con la evaluación de depresión.`);
-
-    agent.add("🧠 *Evaluación de Depresión (PHQ-9)*\n\nPRIMERA PREGUNTA:\n¿Poco interés o placer en hacer cosas?\n(Responde con un número del 0 al 3)\n\n0 = Nada en absoluto\n1 = Varios días\n2 = Más de la mitad de los días\n3 = Casi todos los días");
-
-    console.log("✅ inicioDiagnostico ejecutado correctamente");
-  } catch (error) {
-    console.error("❌ Error en inicioDiagnostico:", error);
-    agent.add("Ocurrió un problema al registrar tus datos. Inténtalo nuevamente.");
-  }
-}
-
-// === PREGUNTAS PHQ-9 ===
-const preguntasDepresion = [
-  "¿Poco interés o placer en hacer cosas?",
-  "¿Te has sentido decaído, deprimido o sin esperanza?",
-  "¿Dificultad para quedarte dormido, o dormir demasiado?",
-  "¿Te has sentido cansado o con poca energía?",
-  "¿Poca autoestima, o te has sentido inútil o fracasado?",
-  "¿Dificultad para concentrarte en cosas como leer o ver televisión?",
-  "¿Te has movido o hablado tan lento que otras personas lo notaron?",
-  "¿Has tenido pensamientos de que estarías mejor muerto o de hacerte daño?",
-  "¿Qué tan difícil han hecho estos problemas tu vida diaria?"
-];
-
-// === BLOQUE DEPRESIÓN ===
-function bloqueDepresion(agent) {
-  try {
-    const context = agent.getContext('contexto_pregunta_depresion');
-    let index = context?.parameters?.index || 0;
-    const respuesta = parseInt(agent.query);
-
-    if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
-      agent.add("⚠️ Por favor, responde con un número del 0 al 3.");
-      return;
-    }
-
-    respuestasDepresion.push(respuesta);
-
-    if (index < preguntasDepresion.length - 1) {
-      index += 1;
-      agent.setContext({
-        name: 'contexto_pregunta_depresion',
-        lifespan: 10,
-        parameters: { index }
-      });
-
-      const nuevaPregunta = preguntasDepresion[index];
-      agent.add(`\n${nuevaPregunta}\n(Responde con un número del 0 al 3)`);
-    } else {
-      const total = respuestasDepresion.reduce((a, b) => a + b, 0);
-      const nivel = interpretarDepresion(total);
-
-      const alumno = agent.getContext('contexto_datos_alumno')?.parameters || {};
-      const nombre = alumno.nombre || 'Alumno';
-      const edad = alumno.edad || 'N/D';
-      const celular = alumno.celular_apoderado || 'N/D';
-
-      agent.add(`✅ *Resultado del test PHQ-9:*\n👤 Nombre: ${nombre}\n🎂 Edad: ${edad}\n📞 Apoderado: ${celular}\n📊 Puntaje: *${total}*\n🧠 Nivel de depresión: *${nivel}*`);
-
-      agent.setContext({
-        name: 'contexto_depresion',
-        lifespan: 10,
-        parameters: { total }
-      });
-
-      agent.add("¿Deseas continuar con el siguiente bloque (ansiedad)? (Responde: sí / no)");
-
-      agent.setContext({
-        name: 'contexto_ansiedad_inicio',
-        lifespan: 5
-      });
-    }
-  } catch (error) {
-    console.error("❌ Error en bloqueDepresion:", error);
-    agent.add("Ocurrió un error durante la evaluación. Intenta nuevamente.");
-  }
-}
-
-// === INTENT MAP ===
+// === MAPEO DE INTENTS ===
 app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
-  console.log('✅ Webhook recibido');
-
-  // Evita error si requestSource no está definido
-  if (!agent.requestSource) {
-    agent.requestSource = 'PLATFORM_UNSPECIFIED';
-  }
+  console.log('✅ Webhook recibido desde Dialogflow');
 
   const intentMap = new Map();
-  intentMap.set('inicio_diagnostico', inicioDiagnostico);
-  intentMap.set('bloque_depresion', bloqueDepresion);
+  intentMap.set('prueba_webhook', pruebaWebhook); // Este intent lo crearás tú
 
   agent.handleRequest(intentMap);
 });
 
-// === INICIO SERVIDOR ===
+// === INICIO DEL SERVIDOR ===
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
