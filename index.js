@@ -63,6 +63,7 @@ function inicioDiagnostico(agent) {
     console.error("❌ Error en inicioDiagnostico:", error);
     agent.add("Ocurrió un problema al registrar tus datos. Inténtalo nuevamente.");
   }
+  console.log("✅ inicioDiagnostico ejecutado correctamente");
 }
 
 
