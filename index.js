@@ -8,8 +8,8 @@ process.env.DEBUG = 'dialogflow:debug';
 const port = process.env.PORT || 3000;
 app.use(bodyParser.json());
 
-// === VARIABLES GLOBALES (en memoria para ejemplo) ===
-let respuestasDepresion = []; // para capturar los 9 puntajes
+// === VARIABLES GLOBALES ===
+let respuestasDepresion = []; // Resetear por sesión sería ideal en futuro
 
 // === INTERPRETACIÓN ===
 function interpretarDepresion(p) {
@@ -30,42 +30,43 @@ function inicioDiagnostico(agent) {
       return;
     }
 
-    // ✅ Establecer contexto con datos del alumno
+    // Guardar contexto del alumno
     agent.setContext({
       name: 'contexto_datos_alumno',
       lifespan: 50,
       parameters: { nombre, edad, celular_apoderado }
     });
 
-    // ✅ Establecer contexto para manejar el índice de preguntas
+    // Iniciar índice de preguntas
+    respuestasDepresion = []; // Reiniciar respuestas
     agent.setContext({
       name: 'contexto_pregunta_depresion',
       lifespan: 10,
       parameters: { index: 0 }
     });
 
-    // ✅ Establecer contexto para activar el intent bloque_depresion
+    // Activar bloque_depresion
     agent.setContext({
       name: 'contexto_depresion_inicio',
       lifespan: 5
     });
 
-    // ✅ Mensaje inicial y PRIMERA pregunta PHQ-9
+    // Primer mensaje y pregunta
     agent.add(`✅ Datos registrados:
 • Nombre: ${nombre}
 • Edad: ${edad}
 • Celular del apoderado: ${celular_apoderado}
-\nIniciemos con la evaluación de depresión.`);
+
+Iniciemos con la evaluación de depresión.`);
 
     agent.add("🧠 *Evaluación de Depresión (PHQ-9)*\n\nPRIMERA PREGUNTA:\n¿Poco interés o placer en hacer cosas?\n(Responde con un número del 0 al 3)\n\n0 = Nada en absoluto\n1 = Varios días\n2 = Más de la mitad de los días\n3 = Casi todos los días");
-console.log("✅ inicioDiagnostico ejecutado correctamente");
+
+    console.log("✅ inicioDiagnostico ejecutado correctamente");
   } catch (error) {
     console.error("❌ Error en inicioDiagnostico:", error);
     agent.add("Ocurrió un problema al registrar tus datos. Inténtalo nuevamente.");
   }
-  
 }
-
 
 // === PREGUNTAS PHQ-9 ===
 const preguntasDepresion = [
@@ -82,52 +83,55 @@ const preguntasDepresion = [
 
 // === BLOQUE DEPRESIÓN ===
 function bloqueDepresion(agent) {
-  const context = agent.getContext('contexto_pregunta_depresion');
-  let index = context?.parameters?.index || 0;
-  const respuesta = parseInt(agent.query);
+  try {
+    const context = agent.getContext('contexto_pregunta_depresion');
+    let index = context?.parameters?.index || 0;
+    const respuesta = parseInt(agent.query);
 
-  if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
-    agent.add("⚠️ Por favor, responde con un número del 0 al 3.");
-    return;
-  }
+    if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
+      agent.add("⚠️ Por favor, responde con un número del 0 al 3.");
+      return;
+    }
 
-  respuestasDepresion.push(respuesta);
+    respuestasDepresion.push(respuesta);
 
-  if (index < preguntasDepresion.length - 1) {
-    index += 1;
-    agent.setContext({
-      name: 'contexto_pregunta_depresion',
-      lifespan: 10,
-      parameters: { index }
-    });
+    if (index < preguntasDepresion.length - 1) {
+      index += 1;
+      agent.setContext({
+        name: 'contexto_pregunta_depresion',
+        lifespan: 10,
+        parameters: { index }
+      });
 
-    const nuevaPregunta = preguntasDepresion[index];
-    agent.add(`\n${nuevaPregunta}\n(Responde del 0 al 3)`);
-  } else {
-    const total = respuestasDepresion.reduce((a, b) => a + b, 0);
-    const nivel = interpretarDepresion(total);
+      const nuevaPregunta = preguntasDepresion[index];
+      agent.add(`\n${nuevaPregunta}\n(Responde con un número del 0 al 3)`);
+    } else {
+      const total = respuestasDepresion.reduce((a, b) => a + b, 0);
+      const nivel = interpretarDepresion(total);
 
-    const alumno = agent.getContext('contexto_datos_alumno')?.parameters || {};
-    const nombre = alumno.nombre || 'Alumno';
-    const edad = alumno.edad || 'N/D';
-    const celular = alumno.celular_apoderado || 'N/D';
+      const alumno = agent.getContext('contexto_datos_alumno')?.parameters || {};
+      const nombre = alumno.nombre || 'Alumno';
+      const edad = alumno.edad || 'N/D';
+      const celular = alumno.celular_apoderado || 'N/D';
 
-    agent.add(`✅ *Resultado del test PHQ-9:*\n👤 Nombre: ${nombre}\n🎂 Edad: ${edad}\n📞 Apoderado: ${celular}\n📊 Puntaje: *${total}*\n🧠 Nivel de depresión: *${nivel}*`);
+      agent.add(`✅ *Resultado del test PHQ-9:*\n👤 Nombre: ${nombre}\n🎂 Edad: ${edad}\n📞 Apoderado: ${celular}\n📊 Puntaje: *${total}*\n🧠 Nivel de depresión: *${nivel}*`);
 
-    // Guardar contexto con resultado
-    agent.setContext({
-      name: 'contexto_depresion',
-      lifespan: 10,
-      parameters: { total }
-    });
+      agent.setContext({
+        name: 'contexto_depresion',
+        lifespan: 10,
+        parameters: { total }
+      });
 
-    agent.add(`¿Deseas continuar con el siguiente bloque (ansiedad)? (Responde: sí / no)`);
+      agent.add("¿Deseas continuar con el siguiente bloque (ansiedad)? (Responde: sí / no)");
 
-    // Preparar siguiente bloque
-    agent.setContext({
-      name: 'contexto_ansiedad_inicio',
-      lifespan: 5
-    });
+      agent.setContext({
+        name: 'contexto_ansiedad_inicio',
+        lifespan: 5
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error en bloqueDepresion:", error);
+    agent.add("Ocurrió un error durante la evaluación. Intenta nuevamente.");
   }
 }
 
@@ -136,9 +140,9 @@ app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
   console.log('✅ Webhook recibido');
 
-  // ✅ Asegurar que no falle con DIALOGFLOW_CONSOLE
+  // Evita error si requestSource no está definido
   if (!agent.requestSource) {
-    agent.requestSource = 'PLATFORM_UNSPECIFIED'; // o 'ACTIONS_ON_GOOGLE' si prefieres
+    agent.requestSource = 'PLATFORM_UNSPECIFIED';
   }
 
   const intentMap = new Map();
@@ -152,6 +156,7 @@ app.post('/webhook', (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
