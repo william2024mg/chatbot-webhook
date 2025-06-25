@@ -1,103 +1,14 @@
-// === DEPENDENCIAS ===
 const express = require('express');
 const bodyParser = require('body-parser');
 const { WebhookClient } = require('dialogflow-fulfillment');
 
 const app = express();
-const port = process.env.PORT || 3000;
-process.env.DEBUG = 'dialogflow:debug';
+const port = process.env.PORT || 10000;
 
 app.use(bodyParser.json());
 
-// === VARIABLES GLOBALES POR SESIÓN ===
-let sesiones = {}; // Objeto para almacenar info por sesión
+let respuestasDepresion = [];
 
-// === INTERPRETACIÓN DE PUNTAJE DE DEPRESIÓN ===
-function interpretarDepresion(p) {
-  if (p <= 4) return "mínima o nula";
-  if (p <= 9) return "leve";
-  if (p <= 14) return "moderada";
-  if (p <= 19) return "moderadamente severa";
-  return "severa";
-}
-
-// === INICIO DEL DIAGNÓSTICO ===
-function inicioDiagnostico(agent) {
-  const sessionId = agent.session.split('/').pop();
-
-  // Limpiar toda la información previa
-  sesiones[sessionId] = {
-    respuestasDepresion: [],
-    datosAlumno: {
-      nombre: null,
-      edad: null,
-      celular_apoderado: null
-    },
-    index: 0
-  };
-
-  agent.setContext({
-    name: 'contexto_datos_alumno_solicitud',
-    lifespan: 5
-  });
-
-  agent.add("👋 Hola, empecemos con el diagnóstico.\n\nPor favor, dime tu *nombre*:");
-}
-
-// === RECOLECTAR DATOS DEL ALUMNO ===
-function recolectarDatosAlumno(agent) {
-  const sessionId = agent.session.split('/').pop();
-  const input = agent.query;
-  const sesion = sesiones[sessionId];
-
-  if (!sesion) {
-    agent.add("❌ No se pudo continuar. Por favor escribe 'inicio' para empezar nuevamente.");
-    return;
-  }
-
-  const datos = sesion.datosAlumno;
-
-  if (!datos.nombre) {
-    datos.nombre = input;
-    agent.add("✅ Gracias. Ahora dime tu *edad*:");
-    return;
-  }
-
-  if (!datos.edad) {
-    const edadNum = parseInt(input);
-    if (isNaN(edadNum) || edadNum < 5 || edadNum > 120) {
-      agent.add("⚠️ Por favor ingresa una edad válida:");
-      return;
-    }
-    datos.edad = edadNum;
-    agent.add("Perfecto. Ahora ingresa el *celular del apoderado*:");
-    return;
-  }
-
-  if (!datos.celular_apoderado) {
-    if (!/^\d{9}$/.test(input)) {
-      agent.add("⚠️ Por favor, ingresa un número válido de 9 dígitos:");
-      return;
-    }
-    datos.celular_apoderado = input;
-
-    agent.add(`✅ *Datos registrados:*
-• Nombre: ${datos.nombre}
-• Edad: ${datos.edad}
-• Celular Apoderado: ${datos.celular_apoderado}`);
-
-    agent.add("\n¿Deseas comenzar con la evaluación de depresión? (Responde: *sí* o *no*)");
-
-    agent.setContext({
-      name: 'contexto_confirmar_depresion',
-      lifespan: 5
-    });
-
-    return;
-  }
-}
-
-// === BLOQUE DE DEPRESIÓN ===
 const preguntasDepresion = [
   "¿Poco interés o placer en hacer cosas?",
   "¿Te has sentido decaído, deprimido o sin esperanza?",
@@ -110,60 +21,126 @@ const preguntasDepresion = [
   "¿Qué tan difícil han hecho estos problemas tu vida diaria?"
 ];
 
-function bloqueDepresion(agent) {
-  const sessionId = agent.session.split('/').pop();
-  const sesion = sesiones[sessionId];
+function interpretarDepresion(p) {
+  if (p <= 4) return "mínima o nula";
+  if (p <= 9) return "leve";
+  if (p <= 14) return "moderada";
+  if (p <= 19) return "moderadamente severa";
+  return "severa";
+}
 
-  if (!sesion) {
-    agent.add("❌ No se encontró tu sesión. Escribe 'inicio' para comenzar.");
+// === INTENT: INICIO_DIAGNOSTICO ===
+function inicioDiagnostico(agent) {
+  respuestasDepresion = [];
+
+  // Limpiar contextos
+  agent.setContext({ name: 'contexto_datos_alumno', lifespan: 1 });
+  agent.setContext({ name: 'contexto_pregunta_depresion', lifespan: 1 });
+
+  // Activar contexto para recolectar datos
+  agent.setContext({
+    name: 'contexto_datos_alumno_solicitud',
+    lifespan: 5
+  });
+
+  agent.add("🧠 Bienvenido al diagnóstico de salud mental.\nPor favor, dime tu *nombre*:");
+}
+
+// === INTENT: RECOLECTAR_DATOS_ALUMNO ===
+function recolectarDatosAlumno(agent) {
+  const input = agent.query.trim();
+  let contexto = agent.getContext('contexto_datos_alumno')?.parameters || {};
+  let datos = { ...contexto };
+
+  if (!datos.nombre) {
+    datos.nombre = input;
+    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
+    agent.add("✅ Gracias. Ahora dime tu *edad*:");
     return;
   }
 
+  if (!datos.edad) {
+    const edadNum = parseInt(input);
+    if (isNaN(edadNum)) {
+      agent.add("⚠️ Por favor ingresa un número válido para la edad.");
+      return;
+    }
+    datos.edad = edadNum;
+    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
+    agent.add("📞 Por último, dime el *celular del apoderado*:");
+    return;
+  }
+
+  if (!datos.celular_apoderado) {
+    if (!/^\d{9}$/.test(input)) {
+      agent.add("⚠️ Ingresa un número de celular válido de 9 dígitos.");
+      return;
+    }
+    datos.celular_apoderado = input;
+    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
+
+    // Iniciar preguntas de depresión
+    agent.setContext({ name: 'contexto_pregunta_depresion', lifespan: 10, parameters: { index: 0 } });
+
+    const pregunta = preguntasDepresion[0];
+    agent.add(`✅ Datos registrados:\n👤 Nombre: ${datos.nombre}\n🎂 Edad: ${datos.edad}\n📞 Celular apoderado: ${datos.celular_apoderado}`);
+    agent.add("Iniciamos con la evaluación de depresión (PHQ-9).");
+    agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde con un número del 0 al 3)`);
+    return;
+  }
+
+  // RESPUESTA POR DEFECTO si no se cumple nada
+  agent.add("⚠️ Ocurrió un error recolectando tus datos. Escribe 'inicio' para comenzar de nuevo.");
+}
+
+// === INTENT: BLOQUE_DEPRESION ===
+function bloqueDepresion(agent) {
+  const context = agent.getContext('contexto_pregunta_depresion');
+  let index = context?.parameters?.index || 0;
   const respuesta = parseInt(agent.query);
+
   if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
     agent.add("⚠️ Por favor responde con un número del 0 al 3.");
     return;
   }
 
-  sesion.respuestasDepresion.push(respuesta);
-  sesion.index++;
+  respuestasDepresion.push(respuesta);
 
-  if (sesion.index < preguntasDepresion.length) {
-    const pregunta = preguntasDepresion[sesion.index];
-    agent.add(`📍 *Pregunta ${sesion.index + 1}*:\n${pregunta}\n\n(Responde del 0 al 3)`);
+  if (index < preguntasDepresion.length - 1) {
+    index++;
+    agent.setContext({
+      name: 'contexto_pregunta_depresion',
+      lifespan: 10,
+      parameters: { index }
+    });
+    agent.add(`${preguntasDepresion[index]}\n(Responde con un número del 0 al 3)`);
   } else {
-    const total = sesion.respuestasDepresion.reduce((a, b) => a + b, 0);
+    const total = respuestasDepresion.reduce((a, b) => a + b, 0);
     const nivel = interpretarDepresion(total);
-    const alumno = sesion.datosAlumno;
+    const alumno = agent.getContext('contexto_datos_alumno')?.parameters || {};
 
-    agent.add(`✅ *Resultado PHQ-9:*
-👤 Nombre: ${alumno.nombre}
-🎂 Edad: ${alumno.edad}
-📞 Apoderado: ${alumno.celular_apoderado}
-📊 Puntaje: *${total}*
-🧠 Nivel de depresión: *${nivel}*`);
-
+    agent.add(`✅ *Resultado PHQ-9:*\n👤 Nombre: ${alumno.nombre || 'N/D'}\n🎂 Edad: ${alumno.edad || 'N/D'}\n📞 Apoderado: ${alumno.celular_apoderado || 'N/D'}\n📊 Puntaje: *${total}*\n🧠 Nivel de depresión: *${nivel}*`);
     agent.add("¿Deseas continuar con el siguiente bloque (ansiedad)? (sí / no)");
   }
 }
 
-// === CONFIGURAR INTENTS ===
+// === WEBHOOK ===
 app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
-  console.log("✅ Webhook recibido");
+  console.log('✅ Webhook recibido');
 
   const intentMap = new Map();
-  intentMap.set("inicio_diagnostico", inicioDiagnostico);
-  intentMap.set("recolectar_datos_alumno", recolectarDatosAlumno);
-  intentMap.set("bloque_depresion", bloqueDepresion);
+  intentMap.set('inicio_diagnostico', inicioDiagnostico);
+  intentMap.set('recolectar_datos_alumno', recolectarDatosAlumno);
+  intentMap.set('bloque_depresion', bloqueDepresion);
 
   agent.handleRequest(intentMap);
 });
 
-// === INICIAR SERVIDOR ===
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
