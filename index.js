@@ -43,7 +43,7 @@ function inicioDiagnostico(agent) {
       lifespan: 50,
       parameters: { nombre: mensaje }
     });
-    agent.add("¿Cuál es tu edad?");
+    agent.add("¿Cuál es tu Nombre?");
     return;
   }
 
