@@ -23,10 +23,27 @@ function interpretarDepresion(p) {
 // === INICIO DIAGNÓSTICO ===
 function inicioDiagnostico(agent) {
   const mensaje = agent.query.trim().toLowerCase();
+
+  // Si escribió "inicio", reiniciar
+  if (mensaje === 'inicio') {
+    respuestasDepresion = [];
+    agent.setContext({
+      name: 'contexto_datos_alumno',
+      lifespan: 10,
+      parameters: {}
+    });
+    agent.setContext({
+      name: 'contexto_pregunta_depresion',
+      lifespan: 0 // eliminar si existía
+    });
+    agent.add("¿Cuál es tu nombre?");
+    return;
+  }
+
   const ctx = agent.getContext('contexto_datos_alumno');
   const datos = ctx?.parameters || {};
 
-  // 1. No hay nombre
+  // 1. Nombre
   if (!datos.nombre) {
     agent.setContext({
       name: 'contexto_datos_alumno',
@@ -37,7 +54,7 @@ function inicioDiagnostico(agent) {
     return;
   }
 
-  // 2. No hay edad
+  // 2. Edad
   if (!datos.edad) {
     const edad = parseInt(agent.query);
     if (isNaN(edad)) {
@@ -53,13 +70,14 @@ function inicioDiagnostico(agent) {
     return;
   }
 
-  // 3. No hay celular
+  // 3. Celular
   if (!datos.celular_apoderado) {
     agent.setContext({
       name: 'contexto_datos_alumno',
       lifespan: 10,
       parameters: { ...datos, celular_apoderado: agent.query }
     });
+
     agent.add(`✅ Datos registrados:
 • Nombre: ${datos.nombre}
 • Edad: ${datos.edad}
@@ -68,7 +86,7 @@ function inicioDiagnostico(agent) {
     return;
   }
 
-  // 4. Confirmar si quiere continuar
+  // 4. Confirmar inicio
   if (mensaje === 'sí') {
     respuestasDepresion = [];
     agent.setContext({
@@ -80,12 +98,17 @@ function inicioDiagnostico(agent) {
     const primera = preguntasDepresion[0];
     agent.add("🧠 *Evaluación de Depresión (PHQ-9)*");
     agent.add(`PRIMERA PREGUNTA:\n${primera}\n(Responde con un número del 0 al 3)`);
-  } else if (mensaje === 'no') {
-    agent.add("Perfecto, puedes iniciar la evaluación más tarde.");
-  } else {
-    agent.add("¿Deseas comenzar con la evaluación de depresión? (Responde: sí / no)");
+    return;
   }
+
+  if (mensaje === 'no') {
+    agent.add("Perfecto, puedes iniciar la evaluación más tarde.");
+    return;
+  }
+
+  agent.add("¿Deseas comenzar con la evaluación de depresión? (Responde: sí / no)");
 }
+
 
 
 // === PREGUNTAS PHQ-9 ===
