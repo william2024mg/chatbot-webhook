@@ -45,28 +45,53 @@ function inicioDiagnostico(agent) {
 
 // === INTENT: RECOLECTAR_DATOS_ALUMNO ===
 function recolectarDatosAlumno(agent) {
-  const { nombre, edad, celular_apoderado } = agent.parameters;
+  const input = agent.query.trim();
+  const contexto = agent.getContext('contexto_datos_alumno')?.parameters || {};
+  let datos = { ...contexto };
 
-  // Guardar en contexto
-  agent.setContext({
-    name: 'contexto_datos_alumno',
-    lifespan: 50,
-    parameters: { nombre, edad, celular_apoderado }
-  });
+  if (!datos.nombre) {
+    datos.nombre = input;
+    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
+    agent.add("✅ Gracias. Ahora dime tu *edad*:");
+    return;
+  }
 
-  // Iniciar preguntas de depresión
-  agent.setContext({
-    name: 'contexto_pregunta_depresion',
-    lifespan: 10,
-    parameters: { index: 0 }
-  });
+  if (!datos.edad) {
+    const edadNum = parseInt(input);
+    if (isNaN(edadNum)) {
+      agent.add("⚠️ Ingresa una edad válida (número).");
+      return;
+    }
+    datos.edad = edadNum;
+    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
+    agent.add("📱 Ahora, ingresa el *celular del apoderado*:");
+    return;
+  }
 
-  const pregunta = preguntasDepresion[0];
+  if (!datos.celular_apoderado) {
+    if (!/^\d{9}$/.test(input)) {
+      agent.add("⚠️ El número debe tener 9 dígitos.");
+      return;
+    }
+    datos.celular_apoderado = input;
+    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
 
-  agent.add(`✅ Datos registrados:\n👤 Nombre: ${nombre}\n🎂 Edad: ${edad}\n📞 Celular apoderado: ${celular_apoderado}`);
-  agent.add("Iniciamos con la evaluación de depresión (PHQ-9).");
-  agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde con un número del 0 al 3)`);
+    agent.setContext({
+      name: 'contexto_pregunta_depresion',
+      lifespan: 10,
+      parameters: { index: 0 }
+    });
+
+    const pregunta = preguntasDepresion[0];
+    agent.add(`✅ Datos guardados:\n👤 ${datos.nombre}\n🎂 ${datos.edad}\n📞 ${datos.celular_apoderado}`);
+    agent.add("Iniciamos con la prueba PHQ-9 de depresión.");
+    agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde del 0 al 3)`);
+    return;
+  }
+
+  agent.add("⚠️ Algo falló. Escribe 'inicio' para comenzar de nuevo.");
 }
+
 
 // === INTENT: BLOQUE_DEPRESION ===
 function bloqueDepresion(agent) {
