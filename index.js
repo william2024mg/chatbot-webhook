@@ -33,64 +33,39 @@ function interpretarDepresion(p) {
 function inicioDiagnostico(agent) {
   respuestasDepresion = [];
 
-  // Limpiar contextos
-  agent.setContext({ name: 'contexto_datos_alumno', lifespan: 1 });
-  agent.setContext({ name: 'contexto_pregunta_depresion', lifespan: 1 });
+  // Limpiar contextos anteriores
+  agent.clearOutgoingContexts();
 
   // Activar contexto para recolectar datos
-  agent.setContext({
-    name: 'contexto_datos_alumno_solicitud',
-    lifespan: 5
-  });
+  agent.setContext({ name: 'contexto_datos_alumno_solicitud', lifespan: 5 });
 
-  agent.add("🧠 Bienvenido al diagnóstico de salud mental.\nPor favor, dime tu *nombre*:");
+  agent.add("🧠 Bienvenido al diagnóstico de salud mental. Vamos a empezar recolectando algunos datos.");
+  // Dialogflow hará las preguntas automáticamente a través del intent recolectar_datos_alumno
 }
 
 // === INTENT: RECOLECTAR_DATOS_ALUMNO ===
 function recolectarDatosAlumno(agent) {
-  const input = agent.query.trim();
-  let contexto = agent.getContext('contexto_datos_alumno')?.parameters || {};
-  let datos = { ...contexto };
+  const { nombre, edad, celular_apoderado } = agent.parameters;
 
-  if (!datos.nombre) {
-    datos.nombre = input;
-    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
-    agent.add("✅ Gracias. Ahora dime tu *edad*:");
-    return;
-  }
+  // Guardar en contexto
+  agent.setContext({
+    name: 'contexto_datos_alumno',
+    lifespan: 50,
+    parameters: { nombre, edad, celular_apoderado }
+  });
 
-  if (!datos.edad) {
-    const edadNum = parseInt(input);
-    if (isNaN(edadNum)) {
-      agent.add("⚠️ Por favor ingresa un número válido para la edad.");
-      return;
-    }
-    datos.edad = edadNum;
-    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
-    agent.add("📞 Por último, dime el *celular del apoderado*:");
-    return;
-  }
+  // Iniciar preguntas de depresión
+  agent.setContext({
+    name: 'contexto_pregunta_depresion',
+    lifespan: 10,
+    parameters: { index: 0 }
+  });
 
-  if (!datos.celular_apoderado) {
-    if (!/^\d{9}$/.test(input)) {
-      agent.add("⚠️ Ingresa un número de celular válido de 9 dígitos.");
-      return;
-    }
-    datos.celular_apoderado = input;
-    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
+  const pregunta = preguntasDepresion[0];
 
-    // Iniciar preguntas de depresión
-    agent.setContext({ name: 'contexto_pregunta_depresion', lifespan: 10, parameters: { index: 0 } });
-
-    const pregunta = preguntasDepresion[0];
-    agent.add(`✅ Datos registrados:\n👤 Nombre: ${datos.nombre}\n🎂 Edad: ${datos.edad}\n📞 Celular apoderado: ${datos.celular_apoderado}`);
-    agent.add("Iniciamos con la evaluación de depresión (PHQ-9).");
-    agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde con un número del 0 al 3)`);
-    return;
-  }
-
-  // RESPUESTA POR DEFECTO si no se cumple nada
-  agent.add("⚠️ Ocurrió un error recolectando tus datos. Escribe 'inicio' para comenzar de nuevo.");
+  agent.add(`✅ Datos registrados:\n👤 Nombre: ${nombre}\n🎂 Edad: ${edad}\n📞 Celular apoderado: ${celular_apoderado}`);
+  agent.add("Iniciamos con la evaluación de depresión (PHQ-9).");
+  agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde con un número del 0 al 3)`);
 }
 
 // === INTENT: BLOQUE_DEPRESION ===
