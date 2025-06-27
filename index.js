@@ -32,15 +32,10 @@ function interpretarDepresion(p) {
 // === INTENT: INICIO_DIAGNOSTICO ===
 function inicioDiagnostico(agent) {
   respuestasDepresion = [];
-
-  // Limpiar contextos anteriores
   agent.clearOutgoingContexts();
 
-  // Activar contexto para recolectar datos
   agent.setContext({ name: 'contexto_datos_alumno_solicitud', lifespan: 5 });
-
   agent.add("🧠 Bienvenido al diagnóstico de salud mental. Vamos a empezar recolectando algunos datos.");
-  // Dialogflow hará las preguntas automáticamente a través del intent recolectar_datos_alumno
 }
 
 // === INTENT: RECOLECTAR_DATOS_ALUMNO ===
@@ -76,10 +71,14 @@ function recolectarDatosAlumno(agent) {
     datos.celular_apoderado = input;
     agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
 
+    // Inicializa bloque_depresion
     agent.setContext({
       name: 'contexto_pregunta_depresion',
       lifespan: 10,
-      parameters: { index: 0 }
+      parameters: {
+        index: 0,
+        respuestas: []
+      }
     });
 
     const pregunta = preguntasDepresion[0];
@@ -92,7 +91,6 @@ function recolectarDatosAlumno(agent) {
   agent.add("⚠️ Algo falló. Escribe 'inicio' para comenzar de nuevo.");
 }
 
-
 // === INTENT: BLOQUE_DEPRESION ===
 function bloqueDepresion(agent) {
   const context = agent.getContext('contexto_pregunta_depresion');
@@ -104,7 +102,6 @@ function bloqueDepresion(agent) {
     return;
   }
 
-  // Recuperar respuestas pasadas
   let respuestas = context?.parameters?.respuestas || [];
   respuestas.push(respuesta);
 
@@ -121,7 +118,6 @@ function bloqueDepresion(agent) {
     const nivel = interpretarDepresion(total);
     const alumno = agent.getContext('contexto_datos_alumno')?.parameters || {};
 
-    // Guardar resultados para el intent siguiente (resultado_depresion)
     agent.setContext({
       name: 'contexto_resultado_depresion',
       lifespan: 5,
@@ -147,8 +143,6 @@ function resultadoDepresion(agent) {
   agent.add("¿Deseas continuar con el bloque de ansiedad?");
 }
 
-
-
 // === WEBHOOK ===
 app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
@@ -166,6 +160,7 @@ app.post('/webhook', (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
