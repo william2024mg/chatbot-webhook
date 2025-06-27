@@ -104,25 +104,50 @@ function bloqueDepresion(agent) {
     return;
   }
 
-  respuestasDepresion.push(respuesta);
+  // Recuperar respuestas pasadas
+  let respuestas = context?.parameters?.respuestas || [];
+  respuestas.push(respuesta);
 
   if (index < preguntasDepresion.length - 1) {
     index++;
     agent.setContext({
       name: 'contexto_pregunta_depresion',
       lifespan: 10,
-      parameters: { index }
+      parameters: { index, respuestas }
     });
     agent.add(`${preguntasDepresion[index]}\n(Responde con un número del 0 al 3)`);
   } else {
-    const total = respuestasDepresion.reduce((a, b) => a + b, 0);
+    const total = respuestas.reduce((a, b) => a + b, 0);
     const nivel = interpretarDepresion(total);
     const alumno = agent.getContext('contexto_datos_alumno')?.parameters || {};
 
-    agent.add(`✅ *Resultado PHQ-9:*\n👤 Nombre: ${alumno.nombre || 'N/D'}\n🎂 Edad: ${alumno.edad || 'N/D'}\n📞 Apoderado: ${alumno.celular_apoderado || 'N/D'}\n📊 Puntaje: *${total}*\n🧠 Nivel de depresión: *${nivel}*`);
-    agent.add("¿Deseas continuar con el siguiente bloque (ansiedad)? (sí / no)");
+    // Guardar resultados para el intent siguiente (resultado_depresion)
+    agent.setContext({
+      name: 'contexto_resultado_depresion',
+      lifespan: 5,
+      parameters: {
+        respuestas,
+        total,
+        nivel
+      }
+    });
+
+    agent.add(`✅ Finalizamos la evaluación de depresión.\n¿Deseas ver tu resultado? (sí / no)`);
   }
 }
+
+// === INTENT: RESULTADO_DEPRESION ===
+function resultadoDepresion(agent) {
+  const ctx = agent.getContext('contexto_resultado_depresion');
+  const alumno = agent.getContext('contexto_datos_alumno')?.parameters || {};
+  const total = ctx?.parameters?.total || 0;
+  const nivel = ctx?.parameters?.nivel || "desconocido";
+
+  agent.add(`🧠 Resultado PHQ-9:\n👤 Nombre: ${alumno.nombre || 'N/D'}\n🎂 Edad: ${alumno.edad || 'N/D'}\n📞 Apoderado: ${alumno.celular_apoderado || 'N/D'}\n📊 Puntaje: *${total}*\n🔎 Nivel de depresión: *${nivel}*`);
+  agent.add("¿Deseas continuar con el bloque de ansiedad?");
+}
+
+
 
 // === WEBHOOK ===
 app.post('/webhook', (req, res) => {
@@ -133,6 +158,7 @@ app.post('/webhook', (req, res) => {
   intentMap.set('inicio_diagnostico', inicioDiagnostico);
   intentMap.set('recolectar_datos_alumno', recolectarDatosAlumno);
   intentMap.set('bloque_depresion', bloqueDepresion);
+  intentMap.set('resultado_depresion', resultadoDepresion);
 
   agent.handleRequest(intentMap);
 });
