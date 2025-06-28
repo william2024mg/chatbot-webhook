@@ -131,6 +131,21 @@ function bloqueDepresion(agent) {
     agent.add(`✅ Finalizamos la evaluación de depresión.\n¿Deseas ver tu resultado? (sí / no)`);
   }
 }
+// === INTENT: INICIAR_BLOQUE_DEPRESION ===
+function iniciarBloqueDepresion(agent) {
+  // Reiniciar respuestas y establecer índice inicial
+  respuestasDepresion = [];
+  
+  agent.setContext({
+    name: 'contexto_pregunta_depresion',
+    lifespan: 10,
+    parameters: { index: 0 }
+  });
+
+  const pregunta = preguntasDepresion[0];
+  agent.add("🧠 Iniciamos la prueba PHQ-9 de depresión.");
+  agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde con un número del 0 al 3)`);
+}
 
 // === INTENT: RESULTADO_DEPRESION ===
 function resultadoDepresion(agent) {
@@ -152,6 +167,7 @@ app.post('/webhook', (req, res) => {
   intentMap.set('inicio_diagnostico', inicioDiagnostico);
   intentMap.set('recolectar_datos_alumno', recolectarDatosAlumno);
   intentMap.set('bloque_depresion', bloqueDepresion);
+  intentMap.set('iniciar_bloque_depresion', iniciarBloqueDepresion);
   intentMap.set('resultado_depresion', resultadoDepresion);
 
   agent.handleRequest(intentMap);
