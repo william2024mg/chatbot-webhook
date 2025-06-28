@@ -70,9 +70,6 @@ function recolectarDatosAlumno(agent) {
     }
     datos.celular_apoderado = input;
     agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
-    {
-  "name": "iniciar_bloque_depresion"
-}
 
     // Inicializa bloque_depresion
     agent.setContext({
