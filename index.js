@@ -4,7 +4,6 @@ const { WebhookClient } = require('dialogflow-fulfillment');
 
 const app = express();
 const port = process.env.PORT || 10000;
-
 app.use(bodyParser.json());
 
 let respuestasDepresion = [];
@@ -32,10 +31,11 @@ function interpretarDepresion(p) {
 // === INTENT: INICIO_DIAGNOSTICO ===
 function inicioDiagnostico(agent) {
   respuestasDepresion = [];
-  agent.clearOutgoingContexts();
-
+  agent.clearOutgoingContexts(); // Limpia contextos anteriores
   agent.setContext({ name: 'contexto_datos_alumno_solicitud', lifespan: 5 });
+
   agent.add("🧠 Bienvenido al diagnóstico de salud mental. Vamos a empezar recolectando algunos datos.");
+  agent.add("Por favor, dime tu *nombre*:");
 }
 
 // === INTENT: RECOLECTAR_DATOS_ALUMNO ===
@@ -44,6 +44,7 @@ function recolectarDatosAlumno(agent) {
   const contexto = agent.getContext('contexto_datos_alumno')?.parameters || {};
   let datos = { ...contexto };
 
+  // Registrar nombre
   if (!datos.nombre) {
     datos.nombre = input;
     agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
@@ -51,51 +52,41 @@ function recolectarDatosAlumno(agent) {
     return;
   }
 
+  // Registrar edad
   if (!datos.edad) {
     const edadNum = parseInt(input);
     if (isNaN(edadNum)) {
-      agent.add("⚠️ Ingresa una edad válida (número).");
+      agent.add("⚠️ Ingresa una edad válida (solo número).");
       return;
     }
     datos.edad = edadNum;
     agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
-    agent.add("📱 Ahora, ingresa el *celular del apoderado*:");
+    agent.add("📱 Ahora, escribe el *número de celular del apoderado* (9 dígitos):");
     return;
   }
 
+  // Registrar celular
   if (!datos.celular_apoderado && /^\d{9}$/.test(input)) {
-  datos.celular_apoderado = input;
+    datos.celular_apoderado = input;
+    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
 
-  agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
-
-  agent.setContext({
-    name: 'contexto_pregunta_depresion',
-    lifespan: 10,
-    parameters: { index: 0, respuestas: [] }
-  });
-
-  const pregunta = preguntasDepresion[0];
-  agent.add(`✅ Datos guardados:\n👤 ${datos.nombre}\n🎂 ${datos.edad}\n📞 ${datos.celular_apoderado}`);
-  agent.add("Iniciamos con la prueba PHQ-9 de depresión.");
-  agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde del 0 al 3)`);
-  return;
-}
-
-
-    // Inicializa bloque_depresion
+    // Inicia el bloque de depresión
     agent.setContext({
       name: 'contexto_pregunta_depresion',
       lifespan: 10,
-      parameters: {
-        index: 0,
-        respuestas: []
-      }
+      parameters: { index: 0, respuestas: [] }
     });
 
     const pregunta = preguntasDepresion[0];
     agent.add(`✅ Datos guardados:\n👤 ${datos.nombre}\n🎂 ${datos.edad}\n📞 ${datos.celular_apoderado}`);
     agent.add("Iniciamos con la prueba PHQ-9 de depresión.");
     agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde del 0 al 3)`);
+    return;
+  }
+
+  // Si celular no válido
+  if (!/^\d{9}$/.test(input)) {
+    agent.add("⚠️ El número debe tener 9 dígitos. Intenta nuevamente.");
     return;
   }
 
@@ -142,20 +133,19 @@ function bloqueDepresion(agent) {
     agent.add(`✅ Finalizamos la evaluación de depresión.\n¿Deseas ver tu resultado? (sí / no)`);
   }
 }
+
 // === INTENT: INICIAR_BLOQUE_DEPRESION ===
 function iniciarBloqueDepresion(agent) {
-  // Reiniciar respuestas y establecer índice inicial
   respuestasDepresion = [];
-  
   agent.setContext({
     name: 'contexto_pregunta_depresion',
     lifespan: 10,
-    parameters: { index: 0 }
+    parameters: { index: 0, respuestas: [] }
   });
 
   const pregunta = preguntasDepresion[0];
   agent.add("🧠 Iniciamos la prueba PHQ-9 de depresión.");
-  agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde con un número del 0 al 3)`);
+  agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde del 0 al 3)`);
 }
 
 // === INTENT: RESULTADO_DEPRESION ===
@@ -187,6 +177,7 @@ app.post('/webhook', (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
