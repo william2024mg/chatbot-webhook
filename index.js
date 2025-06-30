@@ -63,13 +63,24 @@ function recolectarDatosAlumno(agent) {
     return;
   }
 
-  if (!datos.celular_apoderado) {
-    if (!/^\d{9}$/.test(input)) {
-      agent.add("⚠️ El número debe tener 9 dígitos.");
-      return;
-    }
-    datos.celular_apoderado = input;
-    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
+  if (!datos.celular_apoderado && /^\d{9}$/.test(input)) {
+  datos.celular_apoderado = input;
+
+  agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
+
+  agent.setContext({
+    name: 'contexto_pregunta_depresion',
+    lifespan: 10,
+    parameters: { index: 0, respuestas: [] }
+  });
+
+  const pregunta = preguntasDepresion[0];
+  agent.add(`✅ Datos guardados:\n👤 ${datos.nombre}\n🎂 ${datos.edad}\n📞 ${datos.celular_apoderado}`);
+  agent.add("Iniciamos con la prueba PHQ-9 de depresión.");
+  agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde del 0 al 3)`);
+  return;
+}
+
 
     // Inicializa bloque_depresion
     agent.setContext({
