@@ -1,12 +1,10 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { WebhookClient } = require('dialogflow-fulfillment');
 
 const app = express();
 const port = process.env.PORT || 10000;
-app.use(bodyParser.json());
 
-const sesiones = {};
+app.use(bodyParser.json());
 
 const preguntasDepresion = [
   "¿Poco interés o placer en hacer cosas?",
@@ -28,100 +26,112 @@ function interpretarDepresion(p) {
   return "severa";
 }
 
-// === INTENT: INICIO_DIAGNOSTICO ===
-function inicioDiagnostico(agent) {
-  const sessionId = agent.session;
-  sesiones[sessionId] = {
-    paso: 'nombre',
-    datos: {},
-    respuestas: [],
-    index: 0
-  };
+const sesiones = {};
 
-  agent.add("🧠 Bienvenido al diagnóstico de salud mental.");
-  agent.add("Por favor, dime tu *nombre*:");
-}
-
-// === INTENT: CAPTURA_TEXTO_GENERAL ===
-function capturaTexto(agent) {
-  const sessionId = agent.session;
-  const input = agent.query.trim();
-  const estado = sesiones[sessionId];
-
-  if (!estado) {
-    agent.add("❗ Por favor escribe 'inicio' para comenzar el diagnóstico.");
-    return;
-  }
-
-  const paso = estado.paso;
-
-  if (paso === 'nombre') {
-    estado.datos.nombre = input;
-    estado.paso = 'edad';
-    agent.add("✅ Gracias. Ahora dime tu *edad*:");
-  } else if (paso === 'edad') {
-    const edad = parseInt(input);
-    if (isNaN(edad)) {
-      agent.add("⚠️ Edad no válida. Por favor ingresa un número:");
-      return;
-    }
-    estado.datos.edad = edad;
-    estado.paso = 'celular';
-    agent.add("📱 Ingresa el *celular del apoderado* (9 dígitos):");
-  } else if (paso === 'celular') {
-    if (!/^\d{9}$/.test(input)) {
-      agent.add("⚠️ Ingresa un número válido de 9 dígitos.");
-      return;
-    }
-    estado.datos.celular = input;
-    estado.paso = 'depresion';
-    estado.index = 0;
-    estado.respuestas = [];
-
-    agent.add(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
-    agent.add("🧠 Empezamos con el test PHQ-9 de depresión.");
-    agent.add(`${preguntasDepresion[0]} (Responde del 0 al 3)`);
-  } else if (paso === 'depresion') {
-    const r = parseInt(input);
-    if (isNaN(r) || r < 0 || r > 3) {
-      agent.add("⚠️ Por favor responde con un número del 0 al 3.");
-      return;
-    }
-
-    estado.respuestas.push(r);
-    estado.index++;
-
-    if (estado.index < preguntasDepresion.length) {
-      agent.add(`${preguntasDepresion[estado.index]} (0 al 3)`);
-    } else {
-      const total = estado.respuestas.reduce((a, b) => a + b, 0);
-      const nivel = interpretarDepresion(total);
-      estado.paso = 'finalizado';
-
-      agent.add(`✅ Test PHQ-9 finalizado.\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
-      agent.add(`📊 Puntaje: *${total}*\n🔎 Nivel de depresión: *${nivel}*`);
-      agent.add("¿Deseas continuar con el bloque de ansiedad?");
-    }
-  } else {
-    agent.add("🔁 Para comenzar de nuevo, escribe 'inicio'.");
-  }
-}
-
-// === WEBHOOK ===
 app.post('/webhook', (req, res) => {
-  const agent = new WebhookClient({ request: req, response: res });
-  console.log('✅ Webhook recibido');
+  console.log("✅ Webhook recibido");
 
-  const intentMap = new Map();
-  intentMap.set('inicio_diagnostico', inicioDiagnostico);
-  intentMap.set('captura_texto_general', capturaTexto);
+  const sessionId = req.body.session;
+  const queryText = req.body.queryResult.queryText?.toLowerCase();
+  const intent = req.body.queryResult.intent.displayName;
 
-  agent.handleRequest(intentMap);
+  if (!sesiones[sessionId]) {
+    sesiones[sessionId] = {
+      paso: 'inicio',
+      datos: {},
+      respuestas: [],
+      index: 0
+    };
+  }
+
+  const estado = sesiones[sessionId];
+  const mensajes = [];
+
+  // === INICIO ===
+  if (queryText === 'inicio' || intent === 'inicio_diagnostico') {
+    sesiones[sessionId] = {
+      paso: 'nombre',
+      datos: {},
+      respuestas: [],
+      index: 0
+    };
+    mensajes.push("🧠 Bienvenido al diagnóstico de salud mental.");
+    mensajes.push("Por favor, dime tu *nombre*:");
+  }
+
+  // === NOMBRE ===
+  else if (estado.paso === 'nombre') {
+    estado.datos.nombre = queryText;
+    estado.paso = 'edad';
+    mensajes.push("✅ Gracias. Ahora dime tu *edad*:");
+  }
+
+  // === EDAD ===
+  else if (estado.paso === 'edad') {
+    const edadNum = parseInt(queryText);
+    if (isNaN(edadNum)) {
+      mensajes.push("⚠️ Por favor, escribe una edad válida.");
+    } else {
+      estado.datos.edad = edadNum;
+      estado.paso = 'celular';
+      mensajes.push("📱 Ahora, ingresa el *celular del apoderado* (9 dígitos):");
+    }
+  }
+
+  // === CELULAR ===
+  else if (estado.paso === 'celular') {
+    if (!/^\d{9}$/.test(queryText)) {
+      mensajes.push("⚠️ El número debe tener 9 dígitos. Intenta otra vez:");
+    } else {
+      estado.datos.celular = queryText;
+      estado.paso = 'depresion';
+      estado.index = 0;
+      estado.respuestas = [];
+      mensajes.push(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
+      mensajes.push("🧠 Iniciamos con la prueba PHQ-9 de depresión.");
+      mensajes.push(`PRIMERA PREGUNTA:\n${preguntasDepresion[0]}\n(Responde con un número del 0 al 3)`);
+    }
+  }
+
+  // === PREGUNTAS DE DEPRESIÓN ===
+  else if (estado.paso === 'depresion') {
+    const respuesta = parseInt(queryText);
+    if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
+      mensajes.push("⚠️ Responde solo con un número del 0 al 3.");
+    } else {
+      estado.respuestas.push(respuesta);
+      estado.index++;
+
+      if (estado.index < preguntasDepresion.length) {
+        mensajes.push(`${preguntasDepresion[estado.index]}\n(Responde con un número del 0 al 3)`);
+      } else {
+        const total = estado.respuestas.reduce((a, b) => a + b, 0);
+        const nivel = interpretarDepresion(total);
+        mensajes.push(`🧠 Resultado PHQ-9:\n👤 Nombre: ${estado.datos.nombre}\n🎂 Edad: ${estado.datos.edad}\n📞 Apoderado: ${estado.datos.celular}`);
+        mensajes.push(`📊 Puntaje total: *${total}*`);
+        mensajes.push(`🔎 Nivel de depresión: *${nivel}*`);
+        mensajes.push("¿Deseas continuar con el bloque de ansiedad? (sí / no)");
+        estado.paso = 'fin';
+      }
+    }
+  }
+
+  // === RESPUESTA POR DEFECTO ===
+  else {
+    mensajes.push("⚠️ No entendí. Escribe 'inicio' para comenzar de nuevo.");
+  }
+
+  // Enviar respuesta a Dialogflow
+  res.json({
+    fulfillmentMessages: mensajes.map(text => ({ text: { text: [text] } }))
+  });
 });
 
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
+
 
 
 
