@@ -35,6 +35,10 @@ app.post('/webhook', (req, res) => {
   const queryText = req.body.queryResult.queryText?.toLowerCase();
   const intent = req.body.queryResult.intent.displayName;
 
+// Si el intent es 'captura_texto_general', ignoramos su nombre y dejamos pasar el texto del usuario según el flujo
+const textoUsuario = req.body.queryResult.queryText?.toLowerCase();
+const esGenerico = intent === 'captura_texto_general';
+
   if (!sesiones[sessionId]) {
     sesiones[sessionId] = {
       paso: 'inicio',
@@ -48,7 +52,7 @@ app.post('/webhook', (req, res) => {
   const mensajes = [];
 
   // === INICIO ===
-  if (queryText === 'inicio' || intent === 'inicio_diagnostico') {
+  if (textoUsuario === 'inicio' || intent === 'inicio_diagnostico') {
     sesiones[sessionId] = {
       paso: 'nombre',
       datos: {},
@@ -60,14 +64,14 @@ app.post('/webhook', (req, res) => {
   }
 
   // === NOMBRE ===
-  else if (estado.paso === 'nombre') {
+  else if (estado.paso === 'nombre' && (esGenerico || intent === 'captura_texto_general')) {
     estado.datos.nombre = queryText;
     estado.paso = 'edad';
     mensajes.push("✅ Gracias. Ahora dime tu *edad*:");
   }
 
   // === EDAD ===
-  else if (estado.paso === 'edad') {
+ else if (estado.paso === 'edad' && (esGenerico || intent === 'captura_texto_general')) {
     const edadNum = parseInt(queryText);
     if (isNaN(edadNum)) {
       mensajes.push("⚠️ Por favor, escribe una edad válida.");
@@ -79,7 +83,7 @@ app.post('/webhook', (req, res) => {
   }
 
   // === CELULAR ===
-  else if (estado.paso === 'celular') {
+  else if (estado.paso === 'celular' && (esGenerico || intent === 'captura_texto_general')) {
     if (!/^\d{9}$/.test(queryText)) {
       mensajes.push("⚠️ El número debe tener 9 dígitos. Intenta otra vez:");
     } else {
@@ -94,7 +98,7 @@ app.post('/webhook', (req, res) => {
   }
 
   // === PREGUNTAS DE DEPRESIÓN ===
-  else if (estado.paso === 'depresion') {
+  else if (estado.paso === 'depresion' && (esGenerico || intent === 'captura_texto_general')) {
     const respuesta = parseInt(queryText);
     if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
       mensajes.push("⚠️ Responde solo con un número del 0 al 3.");
