@@ -48,9 +48,6 @@ function interpretarAnsiedad(p) {
   if (p <= 14) return "moderada";
   return "severa";
 }
-function limpiarHTML(texto) {
-  return texto.replace(/<\/?[^>]+(>|$)/g, "");
-}
 
 const sesiones = {};
 
@@ -99,7 +96,7 @@ const esGenerico = intent === 'captura_texto_general';
 
   // === EDAD ===
  else if (estado.paso === 'edad' && (esGenerico || intent === 'captura_texto_general')) {
-  const edadNum = parseInt(queryText);
+ const edadNum = parseInt(limpiarHTML(queryText));
   if (isNaN(edadNum) || edadNum < 6 || edadNum > 22) {
     mensajes.push("⚠️ Por favor, ingresa una edad válida entre 6 y 22 años.");
   } else {
@@ -111,10 +108,11 @@ const esGenerico = intent === 'captura_texto_general';
 
   // === CELULAR ===
   else if (estado.paso === 'celular' && (esGenerico || intent === 'captura_texto_general')) {
-    if (!/^\d{9}$/.test(queryText)) {
+const celular = limpiarHTML(queryText);
+if (!/^\d{9}$/.test(celular)) {
       mensajes.push("⚠️ El número debe tener 9 dígitos. Intenta otra vez:");
     } else {
-      estado.datos.celular = limpiarHTML(queryText);
+      estado.datos.celular = celular;
       estado.paso = 'depresion';
       estado.index = 0;
       estado.respuestas = [];
