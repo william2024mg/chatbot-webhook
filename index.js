@@ -26,6 +26,9 @@ function interpretarDepresion(p) {
   if (p <= 19) return "moderadamente severa";
   return "severa";
 }
+function limpiarHTML(texto) {
+  return texto.replace(/<\/?[^>]+(>|$)/g, "");
+}
 
 // ========================== ANSIEDAD (GAD-7) ==========================
 
@@ -45,7 +48,9 @@ function interpretarAnsiedad(p) {
   if (p <= 14) return "moderada";
   return "severa";
 }
-
+function limpiarHTML(texto) {
+  return texto.replace(/<\/?[^>]+(>|$)/g, "");
+}
 
 const sesiones = {};
 
@@ -87,7 +92,7 @@ const esGenerico = intent === 'captura_texto_general';
 
   // === NOMBRE ===
   else if (estado.paso === 'nombre' && (esGenerico || intent === 'captura_texto_general')) {
-    estado.datos.nombre = queryText;
+    estado.datos.nombre = limpiarHTML(queryText);
     estado.paso = 'edad';
     mensajes.push("✅ Gracias. Ahora dime tu *edad*:");
   }
@@ -109,7 +114,7 @@ const esGenerico = intent === 'captura_texto_general';
     if (!/^\d{9}$/.test(queryText)) {
       mensajes.push("⚠️ El número debe tener 9 dígitos. Intenta otra vez:");
     } else {
-      estado.datos.celular = queryText;
+      estado.datos.celular = limpiarHTML(queryText);
       estado.paso = 'depresion';
       estado.index = 0;
       estado.respuestas = [];
