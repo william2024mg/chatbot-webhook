@@ -139,27 +139,34 @@ function resultadoDepresion(agent) {
 
 // === WEBHOOK ===
 app.post('/webhook', (req, res) => {
-  const agent = new WebhookClient({ request: req, response: res });
+  console.log("✅ Webhook recibido");
 
-  // 🔧 Solución clave: forzar plataforma para que no falle en consola
-  agent.requestSource = 'PLATFORM_UNSPECIFIED';
+  const intent = req.body.queryResult.intent.displayName;
+  const session = req.body.session;
+  const queryText = req.body.queryResult.queryText;
 
-  console.log('✅ Webhook recibido');
+  // Crear una respuesta por defecto
+  let respuestas = [];
 
-  const intentMap = new Map();
-  intentMap.set('inicio_diagnostico', inicioDiagnostico);
-  intentMap.set('recolectar_datos_alumno', recolectarDatosAlumno);
-  intentMap.set('bloque_depresion', bloqueDepresion);
-  intentMap.set('resultado_depresion', resultadoDepresion);
-
-  try {
-    agent.handleRequest(intentMap);
-  } catch (error) {
-    console.error('❌ Error en el webhook:', error.message);
-    agent.add("⚠️ Lo siento, ocurrió un error. Por favor escribe 'inicio' para comenzar de nuevo.");
-    res.json({ fulfillmentText: "⚠️ Lo siento, ocurrió un error. Por favor escribe 'inicio' para comenzar de nuevo." });
+  // === INTENT: inicio_diagnostico ===
+  if (intent === 'inicio_diagnostico') {
+    respuestas.push("🧠 Bienvenido al diagnóstico de salud mental. Vamos a empezar recolectando algunos datos.");
+    respuestas.push("Por favor, dime tu *nombre*:");
   }
+
+  // === Otros INTENTS como recolectar_datos_alumno, bloque_depresion, etc ===
+  // Puedes ir llamando manualmente tus funciones y devolviendo respuestas en array `respuestas`
+
+  if (respuestas.length === 0) {
+    respuestas.push("⚠️ No entendí. Escribe 'inicio' para comenzar de nuevo.");
+  }
+
+  // Enviar respuesta en formato Dialogflow
+  res.json({
+    fulfillmentMessages: respuestas.map(mensaje => ({ text: { text: [mensaje] } }))
+  });
 });
+
 
 
 app.listen(port, () => {
