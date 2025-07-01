@@ -30,13 +30,19 @@ function interpretarDepresion(p) {
 
 // === INTENT: INICIO_DIAGNOSTICO ===
 function inicioDiagnostico(agent) {
+  console.log("🔔 inicioDiagnostico - entrada");
+
   respuestasDepresion = [];
-  agent.clearOutgoingContexts(); // Limpia contextos anteriores
+  agent.clearOutgoingContexts();
+
   agent.setContext({ name: 'contexto_datos_alumno_solicitud', lifespan: 5 });
 
   agent.add("🧠 Bienvenido al diagnóstico de salud mental. Vamos a empezar recolectando algunos datos.");
   agent.add("Por favor, dime tu *nombre*:");
+
+  console.log("✔️ inicioDiagnostico - envío bienvenida y pregunta nombre");
 }
+
 
 // === INTENT: RECOLECTAR_DATOS_ALUMNO ===
 function recolectarDatosAlumno(agent) {
