@@ -32,7 +32,6 @@ function interpretarDepresion(p) {
 // === INTENT: INICIO_DIAGNOSTICO ===
 function inicioDiagnostico(agent) {
   respuestasDepresion = [];
-
   agent.clearOutgoingContexts();
   agent.setContext({ name: 'contexto_datos_alumno_solicitud', lifespan: 5 });
 
@@ -87,10 +86,8 @@ function recolectarDatosAlumno(agent) {
     }
   }
 
-  // Si llegó aquí sin retorno anterior, mostrar mensaje de respaldo:
   agent.add("⚠️ Algo falló. Escribe 'inicio' para comenzar de nuevo.");
 }
-
 
 // === INTENT: BLOQUE_DEPRESION ===
 function bloqueDepresion(agent) {
@@ -122,11 +119,7 @@ function bloqueDepresion(agent) {
     agent.setContext({
       name: 'contexto_resultado_depresion',
       lifespan: 5,
-      parameters: {
-        respuestas,
-        total,
-        nivel
-      }
+      parameters: { respuestas, total, nivel }
     });
 
     agent.add(`✅ Finalizamos la evaluación de depresión.\n¿Deseas ver tu resultado? (sí / no)`);
@@ -155,12 +148,19 @@ app.post('/webhook', (req, res) => {
   intentMap.set('bloque_depresion', bloqueDepresion);
   intentMap.set('resultado_depresion', resultadoDepresion);
 
-  agent.handleRequest(intentMap);
+  try {
+    agent.handleRequest(intentMap);
+  } catch (error) {
+    console.error('❌ Error en el webhook:', error.message);
+    agent.add("⚠️ Lo siento, ocurrió un error. Por favor escribe 'inicio' para comenzar de nuevo.");
+    res.json({ fulfillmentText: "⚠️ Lo siento, ocurrió un error. Por favor escribe 'inicio' para comenzar de nuevo." });
+  }
 });
 
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
