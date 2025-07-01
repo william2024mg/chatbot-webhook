@@ -99,15 +99,15 @@ const esGenerico = intent === 'captura_texto_general';
 
   // === EDAD ===
  else if (estado.paso === 'edad' && (esGenerico || intent === 'captura_texto_general')) {
-    const edadNum = parseInt(queryText);
-    if (isNaN(edadNum)) {
-      mensajes.push("⚠️ Por favor, escribe una edad válida.");
-    } else {
-      estado.datos.edad = edadNum;
-      estado.paso = 'celular';
-      mensajes.push("📱 Ahora, ingresa el *celular del apoderado* (9 dígitos):");
-    }
+  const edadNum = parseInt(queryText);
+  if (isNaN(edadNum) || edadNum < 6 || edadNum > 22) {
+    mensajes.push("⚠️ Por favor, ingresa una edad válida entre 6 y 22 años.");
+  } else {
+    estado.datos.edad = edadNum;
+    estado.paso = 'celular';
+    mensajes.push("📱 Ahora, ingresa el *celular del apoderado* (9 dígitos):");
   }
+}
 
   // === CELULAR ===
   else if (estado.paso === 'celular' && (esGenerico || intent === 'captura_texto_general')) {
