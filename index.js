@@ -140,6 +140,10 @@ function resultadoDepresion(agent) {
 // === WEBHOOK ===
 app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
+
+  // 🔧 Solución clave: forzar plataforma para que no falle en consola
+  agent.requestSource = 'PLATFORM_UNSPECIFIED';
+
   console.log('✅ Webhook recibido');
 
   const intentMap = new Map();
@@ -156,6 +160,7 @@ app.post('/webhook', (req, res) => {
     res.json({ fulfillmentText: "⚠️ Lo siento, ocurrió un error. Por favor escribe 'inicio' para comenzar de nuevo." });
   }
 });
+
 
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
