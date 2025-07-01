@@ -6,10 +6,8 @@ const app = express();
 const port = process.env.PORT || 10000;
 app.use(bodyParser.json());
 
-// Manejo de estado por sesión
-let sesiones = {};
+const sesiones = {};
 
-// Preguntas PHQ-9
 const preguntasDepresion = [
   "¿Poco interés o placer en hacer cosas?",
   "¿Te has sentido decaído, deprimido o sin esperanza?",
@@ -61,20 +59,16 @@ function capturaTexto(agent) {
     estado.datos.nombre = input;
     estado.paso = 'edad';
     agent.add("✅ Gracias. Ahora dime tu *edad*:");
-  }
-
-  else if (paso === 'edad') {
-    const edadNum = parseInt(input);
-    if (isNaN(edadNum)) {
-      agent.add("⚠️ Edad no válida. Intenta nuevamente:");
+  } else if (paso === 'edad') {
+    const edad = parseInt(input);
+    if (isNaN(edad)) {
+      agent.add("⚠️ Edad no válida. Por favor ingresa un número:");
       return;
     }
-    estado.datos.edad = edadNum;
+    estado.datos.edad = edad;
     estado.paso = 'celular';
     agent.add("📱 Ingresa el *celular del apoderado* (9 dígitos):");
-  }
-
-  else if (paso === 'celular') {
+  } else if (paso === 'celular') {
     if (!/^\d{9}$/.test(input)) {
       agent.add("⚠️ Ingresa un número válido de 9 dígitos.");
       return;
@@ -86,13 +80,11 @@ function capturaTexto(agent) {
 
     agent.add(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
     agent.add("🧠 Empezamos con el test PHQ-9 de depresión.");
-    agent.add(`${preguntasDepresion[0]} (Responde con un número del 0 al 3)`);
-  }
-
-  else if (paso === 'depresion') {
+    agent.add(`${preguntasDepresion[0]} (Responde del 0 al 3)`);
+  } else if (paso === 'depresion') {
     const r = parseInt(input);
     if (isNaN(r) || r < 0 || r > 3) {
-      agent.add("⚠️ Responde con un número del 0 al 3.");
+      agent.add("⚠️ Por favor responde con un número del 0 al 3.");
       return;
     }
 
@@ -104,20 +96,18 @@ function capturaTexto(agent) {
     } else {
       const total = estado.respuestas.reduce((a, b) => a + b, 0);
       const nivel = interpretarDepresion(total);
+      estado.paso = 'finalizado';
 
-      agent.add(`✅ Finalizamos la evaluación PHQ-9:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
+      agent.add(`✅ Test PHQ-9 finalizado.\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
       agent.add(`📊 Puntaje: *${total}*\n🔎 Nivel de depresión: *${nivel}*`);
       agent.add("¿Deseas continuar con el bloque de ansiedad?");
-      estado.paso = 'fin';
     }
-  }
-
-  else {
-    agent.add("❗ Para iniciar de nuevo escribe 'inicio'.");
+  } else {
+    agent.add("🔁 Para comenzar de nuevo, escribe 'inicio'.");
   }
 }
 
-// === INTENT MAP ===
+// === WEBHOOK ===
 app.post('/webhook', (req, res) => {
   const agent = new WebhookClient({ request: req, response: res });
   console.log('✅ Webhook recibido');
@@ -132,6 +122,7 @@ app.post('/webhook', (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
