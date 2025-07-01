@@ -61,30 +61,36 @@ function recolectarDatosAlumno(agent) {
     }
     datos.edad = edadNum;
     agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
-    agent.add("📱 Ahora, ingresa el *celular del apoderado*:");
+    agent.add("📱 Ahora, ingresa el *celular del apoderado* (9 dígitos):");
     return;
   }
 
-  if (!datos.celular_apoderado && /^\d{9}$/.test(input)) {
-    datos.celular_apoderado = input;
-    agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
+  if (!datos.celular_apoderado) {
+    if (/^\d{9}$/.test(input)) {
+      datos.celular_apoderado = input;
+      agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
 
-    // Guardar contexto para preguntas de depresión
-    agent.setContext({
-      name: 'contexto_pregunta_depresion',
-      lifespan: 10,
-      parameters: { index: 0, respuestas: [] }
-    });
+      agent.setContext({
+        name: 'contexto_pregunta_depresion',
+        lifespan: 10,
+        parameters: { index: 0, respuestas: [] }
+      });
 
-    const pregunta = preguntasDepresion[0];
-    agent.add(`✅ Datos guardados:\n👤 ${datos.nombre}\n🎂 ${datos.edad}\n📞 ${datos.celular_apoderado}`);
-    agent.add("🧠 Iniciamos con la prueba PHQ-9 de depresión.");
-    agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde con un número del 0 al 3)`);
-    return;
+      const pregunta = preguntasDepresion[0];
+      agent.add(`✅ Datos guardados:\n👤 ${datos.nombre}\n🎂 ${datos.edad}\n📞 ${datos.celular_apoderado}`);
+      agent.add("🧠 Iniciamos con la prueba PHQ-9 de depresión.");
+      agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde con un número del 0 al 3)`);
+      return;
+    } else {
+      agent.add("⚠️ Ingresa un número válido de 9 dígitos para el celular.");
+      return;
+    }
   }
 
+  // Si llegó aquí sin retorno anterior, mostrar mensaje de respaldo:
   agent.add("⚠️ Algo falló. Escribe 'inicio' para comenzar de nuevo.");
 }
+
 
 // === INTENT: BLOQUE_DEPRESION ===
 function bloqueDepresion(agent) {
