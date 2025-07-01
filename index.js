@@ -1,10 +1,14 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const { WebhookClient } = require('dialogflow-fulfillment');
 
 const app = express();
 const port = process.env.PORT || 10000;
 
 app.use(bodyParser.json());
+
+// Guardar sesión de usuario
+let sesiones = {};
 
 const preguntasDepresion = [
   "¿Poco interés o placer en hacer cosas?",
@@ -26,29 +30,16 @@ function interpretarDepresion(p) {
   return "severa";
 }
 
-const sesiones = {};
-
 app.post('/webhook', (req, res) => {
-  console.log("✅ Webhook recibido");
-
+  const agent = new WebhookClient({ request: req, response: res });
+  const queryText = req.body.queryResult.queryText;
   const sessionId = req.body.session;
-  const queryText = req.body.queryResult.queryText?.toLowerCase();
-  const intent = req.body.queryResult.intent.displayName;
 
-  if (!sesiones[sessionId]) {
-    sesiones[sessionId] = {
-      paso: 'inicio',
-      datos: {},
-      respuestas: [],
-      index: 0
-    };
-  }
+  console.log('✅ Webhook recibido');
+  let mensajes = [];
 
-  const estado = sesiones[sessionId];
-  const mensajes = [];
-
-  // === INICIO ===
-  if (queryText === 'inicio' || intent === 'inicio_diagnostico') {
+  // Si el usuario escribe "inicio"
+  if (queryText.toLowerCase() === 'inicio') {
     sesiones[sessionId] = {
       paso: 'nombre',
       datos: {},
@@ -59,77 +50,71 @@ app.post('/webhook', (req, res) => {
     mensajes.push("Por favor, dime tu *nombre*:");
   }
 
-  // === NOMBRE ===
-  else if (estado.paso === 'nombre') {
-    estado.datos.nombre = queryText;
-    estado.paso = 'edad';
-    mensajes.push("✅ Gracias. Ahora dime tu *edad*:");
-  }
+  // Si el intent es captura_texto_general
+  else if (req.body.queryResult.intent.displayName === 'captura_texto_general') {
+    const estado = sesiones[sessionId];
 
-  // === EDAD ===
-  else if (estado.paso === 'edad') {
-    const edadNum = parseInt(queryText);
-    if (isNaN(edadNum)) {
-      mensajes.push("⚠️ Por favor, escribe una edad válida.");
-    } else {
-      estado.datos.edad = edadNum;
-      estado.paso = 'celular';
-      mensajes.push("📱 Ahora, ingresa el *celular del apoderado* (9 dígitos):");
-    }
-  }
-
-  // === CELULAR ===
-  else if (estado.paso === 'celular') {
-    if (!/^\d{9}$/.test(queryText)) {
-      mensajes.push("⚠️ El número debe tener 9 dígitos. Intenta otra vez:");
-    } else {
-      estado.datos.celular = queryText;
-      estado.paso = 'depresion';
-      estado.index = 0;
-      estado.respuestas = [];
-      mensajes.push(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
-      mensajes.push("🧠 Iniciamos con la prueba PHQ-9 de depresión.");
-      mensajes.push(`PRIMERA PREGUNTA:\n${preguntasDepresion[0]}\n(Responde con un número del 0 al 3)`);
-    }
-  }
-
-  // === PREGUNTAS DE DEPRESIÓN ===
-  else if (estado.paso === 'depresion') {
-    const respuesta = parseInt(queryText);
-    if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
-      mensajes.push("⚠️ Responde solo con un número del 0 al 3.");
-    } else {
-      estado.respuestas.push(respuesta);
-      estado.index++;
-
-      if (estado.index < preguntasDepresion.length) {
-        mensajes.push(`${preguntasDepresion[estado.index]}\n(Responde con un número del 0 al 3)`);
+    if (!estado) {
+      mensajes.push("❗ Escribe 'inicio' para comenzar el diagnóstico.");
+    } else if (estado.paso === 'nombre') {
+      estado.datos.nombre = queryText;
+      estado.paso = 'edad';
+      mensajes.push("✅ Gracias. Ahora dime tu *edad*:");
+    } else if (estado.paso === 'edad') {
+      const edadNum = parseInt(queryText);
+      if (isNaN(edadNum)) {
+        mensajes.push("⚠️ Edad no válida. Intenta nuevamente:");
       } else {
-        const total = estado.respuestas.reduce((a, b) => a + b, 0);
-        const nivel = interpretarDepresion(total);
-        mensajes.push(`🧠 Resultado PHQ-9:\n👤 Nombre: ${estado.datos.nombre}\n🎂 Edad: ${estado.datos.edad}\n📞 Apoderado: ${estado.datos.celular}`);
-        mensajes.push(`📊 Puntaje total: *${total}*`);
-        mensajes.push(`🔎 Nivel de depresión: *${nivel}*`);
-        mensajes.push("¿Deseas continuar con el bloque de ansiedad? (sí / no)");
-        estado.paso = 'fin';
+        estado.datos.edad = edadNum;
+        estado.paso = 'celular';
+        mensajes.push("📱 Ingresa el *celular del apoderado* (9 dígitos):");
       }
+    } else if (estado.paso === 'celular') {
+      if (!/^\d{9}$/.test(queryText)) {
+        mensajes.push("⚠️ Ingresa un número válido de 9 dígitos.");
+      } else {
+        estado.datos.celular = queryText;
+        estado.paso = 'depresion';
+        estado.index = 0;
+        estado.respuestas = [];
+        mensajes.push(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
+        mensajes.push("🧠 Empezamos con el test PHQ-9 de depresión.");
+        mensajes.push(`${preguntasDepresion[0]} (Responde con un número del 0 al 3)`);
+      }
+    } else if (estado.paso === 'depresion') {
+      const r = parseInt(queryText);
+      if (isNaN(r) || r < 0 || r > 3) {
+        mensajes.push("⚠️ Responde con un número del 0 al 3.");
+      } else {
+        estado.respuestas.push(r);
+        estado.index++;
+        if (estado.index < preguntasDepresion.length) {
+          mensajes.push(`${preguntasDepresion[estado.index]} (0 al 3)`);
+        } else {
+          const total = estado.respuestas.reduce((a, b) => a + b, 0);
+          const nivel = interpretarDepresion(total);
+          mensajes.push(`✅ Resultado de la prueba PHQ-9:\n👤 ${estado.datos.nombre}\n🎂 Edad: ${estado.datos.edad}\n📞 Apoderado: ${estado.datos.celular}`);
+          mensajes.push(`📊 Puntaje: *${total}*\n🔎 Nivel de depresión: *${nivel}*`);
+          mensajes.push("¿Deseas continuar con el bloque de ansiedad? (sí / no)");
+          estado.paso = 'fin';
+        }
+      }
+    } else {
+      mensajes.push("❗ Escribe 'inicio' para comenzar un nuevo diagnóstico.");
     }
+  } else {
+    mensajes.push("❓ No entendí. Escribe 'inicio' para empezar.");
   }
 
-  // === RESPUESTA POR DEFECTO ===
-  else {
-    mensajes.push("⚠️ No entendí. Escribe 'inicio' para comenzar de nuevo.");
-  }
-
-  // Enviar respuesta a Dialogflow
-  res.json({
-    fulfillmentMessages: mensajes.map(text => ({ text: { text: [text] } }))
-  });
+  // Devolver los mensajes acumulados
+  agent.add(mensajes.join('\n\n'));
+  return agent.handleRequest(new Map());
 });
 
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
