@@ -6,6 +6,7 @@ const port = process.env.PORT || 10000;
 
 app.use(bodyParser.json());
 
+// ========================== DEPRESION ==========================
 const preguntasDepresion = [
   "¿Poco interés o placer en hacer cosas?",
   "¿Te has sentido decaído, deprimido o sin esperanza?",
@@ -25,6 +26,26 @@ function interpretarDepresion(p) {
   if (p <= 19) return "moderadamente severa";
   return "severa";
 }
+
+// ========================== ANSIEDAD (GAD-7) ==========================
+
+const preguntasAnsiedad = [
+  "¿Te has sentido nervioso, ansioso o al borde?",
+  "¿No has podido parar o controlar tu preocupación?",
+  "¿Te has preocupado demasiado por diferentes cosas?",
+  "¿Has tenido dificultad para relajarte?",
+  "¿Te has sentido tan inquieto que te cuesta estar quieto?",
+  "¿Te has irritado fácilmente o te has molestado con frecuencia?",
+  "¿Has sentido miedo como si algo terrible pudiera pasar?"
+];
+
+function interpretarAnsiedad(p) {
+  if (p <= 4) return "mínima o nula";
+  if (p <= 9) return "leve";
+  if (p <= 14) return "moderada";
+  return "severa";
+}
+
 
 const sesiones = {};
 
@@ -62,6 +83,7 @@ const esGenerico = intent === 'captura_texto_general';
     mensajes.push("🧠 Bienvenido al diagnóstico de salud mental.");
     mensajes.push("Por favor, dime tu *nombre*:");
   }
+    
 
   // === NOMBRE ===
   else if (estado.paso === 'nombre' && (esGenerico || intent === 'captura_texto_general')) {
@@ -119,9 +141,41 @@ const esGenerico = intent === 'captura_texto_general';
       }
     }
   }
+    
+ // === PREGUNTAS DE ANSIEDAD ===
+    else if (estado.paso === 'ansiedad' && (esGenerico || intent === 'captura_texto_general')) {
+  const respuesta = parseInt(textoUsuario);
+  if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
+    mensajes.push("⚠️ Responde solo con un número del 0 al 3.");
+  } else {
+    estado.respuestas.push(respuesta);
+    estado.index++;
 
+    if (estado.index < preguntasAnsiedad.length) {
+      mensajes.push(`${preguntasAnsiedad[estado.index]}\n(Responde con un número del 0 al 3)`);
+    } else {
+      const total = estado.respuestas.reduce((a, b) => a + b, 0);
+      const nivel = interpretarAnsiedad(total);
+      mensajes.push(`🧠 Resultado GAD-7:\n👤 Nombre: ${estado.datos.nombre}\n🎂 Edad: ${estado.datos.edad}\n📞 Apoderado: ${estado.datos.celular}`);
+      mensajes.push(`📊 Puntaje total: *${total}*`);
+      mensajes.push(`🔎 Nivel de ansiedad: *${nivel}*`);
+      mensajes.push("¿Deseas continuar con el bloque de estrés académico? (sí / no)");
+      estado.paso = 'fin_ansiedad';
+    }
+  }
+}
+
+    
   // === RESPUESTA POR DEFECTO ===
-  else {
+ 
+    else if (textoUsuario === 'sí' && estado.paso === 'fin') {
+  estado.paso = 'ansiedad';
+  estado.index = 0;
+  estado.respuestas = [];
+  mensajes.push("🧠 Iniciamos con la prueba GAD-7 de ansiedad.");
+  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasAnsiedad[0]}\n(Responde con un número del 0 al 3)`);
+}
+    else {
     mensajes.push("⚠️ No entendí. Escribe 'inicio' para comenzar de nuevo.");
   }
 
