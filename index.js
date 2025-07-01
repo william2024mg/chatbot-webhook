@@ -4,6 +4,7 @@ const { WebhookClient } = require('dialogflow-fulfillment');
 
 const app = express();
 const port = process.env.PORT || 10000;
+
 app.use(bodyParser.json());
 
 let respuestasDepresion = [];
@@ -30,19 +31,14 @@ function interpretarDepresion(p) {
 
 // === INTENT: INICIO_DIAGNOSTICO ===
 function inicioDiagnostico(agent) {
-  console.log("🔔 inicioDiagnostico - entrada");
-
   respuestasDepresion = [];
-  agent.clearOutgoingContexts();
 
+  agent.clearOutgoingContexts();
   agent.setContext({ name: 'contexto_datos_alumno_solicitud', lifespan: 5 });
 
   agent.add("🧠 Bienvenido al diagnóstico de salud mental. Vamos a empezar recolectando algunos datos.");
   agent.add("Por favor, dime tu *nombre*:");
-
-  console.log("✔️ inicioDiagnostico - envío bienvenida y pregunta nombre");
 }
-
 
 // === INTENT: RECOLECTAR_DATOS_ALUMNO ===
 function recolectarDatosAlumno(agent) {
@@ -50,7 +46,6 @@ function recolectarDatosAlumno(agent) {
   const contexto = agent.getContext('contexto_datos_alumno')?.parameters || {};
   let datos = { ...contexto };
 
-  // Registrar nombre
   if (!datos.nombre) {
     datos.nombre = input;
     agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
@@ -58,25 +53,23 @@ function recolectarDatosAlumno(agent) {
     return;
   }
 
-  // Registrar edad
   if (!datos.edad) {
     const edadNum = parseInt(input);
     if (isNaN(edadNum)) {
-      agent.add("⚠️ Ingresa una edad válida (solo número).");
+      agent.add("⚠️ Ingresa una edad válida (número).");
       return;
     }
     datos.edad = edadNum;
     agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
-    agent.add("📱 Ahora, escribe el *número de celular del apoderado* (9 dígitos):");
+    agent.add("📱 Ahora, ingresa el *celular del apoderado*:");
     return;
   }
 
-  // Registrar celular
   if (!datos.celular_apoderado && /^\d{9}$/.test(input)) {
     datos.celular_apoderado = input;
     agent.setContext({ name: 'contexto_datos_alumno', lifespan: 50, parameters: datos });
 
-    // Inicia el bloque de depresión
+    // Guardar contexto para preguntas de depresión
     agent.setContext({
       name: 'contexto_pregunta_depresion',
       lifespan: 10,
@@ -85,14 +78,8 @@ function recolectarDatosAlumno(agent) {
 
     const pregunta = preguntasDepresion[0];
     agent.add(`✅ Datos guardados:\n👤 ${datos.nombre}\n🎂 ${datos.edad}\n📞 ${datos.celular_apoderado}`);
-    agent.add("Iniciamos con la prueba PHQ-9 de depresión.");
-    agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde del 0 al 3)`);
-    return;
-  }
-
-  // Si celular no válido
-  if (!/^\d{9}$/.test(input)) {
-    agent.add("⚠️ El número debe tener 9 dígitos. Intenta nuevamente.");
+    agent.add("🧠 Iniciamos con la prueba PHQ-9 de depresión.");
+    agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde con un número del 0 al 3)`);
     return;
   }
 
@@ -140,20 +127,6 @@ function bloqueDepresion(agent) {
   }
 }
 
-// === INTENT: INICIAR_BLOQUE_DEPRESION ===
-function iniciarBloqueDepresion(agent) {
-  respuestasDepresion = [];
-  agent.setContext({
-    name: 'contexto_pregunta_depresion',
-    lifespan: 10,
-    parameters: { index: 0, respuestas: [] }
-  });
-
-  const pregunta = preguntasDepresion[0];
-  agent.add("🧠 Iniciamos la prueba PHQ-9 de depresión.");
-  agent.add(`PRIMERA PREGUNTA:\n${pregunta}\n(Responde del 0 al 3)`);
-}
-
 // === INTENT: RESULTADO_DEPRESION ===
 function resultadoDepresion(agent) {
   const ctx = agent.getContext('contexto_resultado_depresion');
@@ -174,7 +147,6 @@ app.post('/webhook', (req, res) => {
   intentMap.set('inicio_diagnostico', inicioDiagnostico);
   intentMap.set('recolectar_datos_alumno', recolectarDatosAlumno);
   intentMap.set('bloque_depresion', bloqueDepresion);
-  intentMap.set('iniciar_bloque_depresion', iniciarBloqueDepresion);
   intentMap.set('resultado_depresion', resultadoDepresion);
 
   agent.handleRequest(intentMap);
@@ -183,6 +155,7 @@ app.post('/webhook', (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
 });
+
 
 
 
