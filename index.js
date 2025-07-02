@@ -88,15 +88,20 @@ const esGenerico = intent === 'captura_texto_general';
     
 
   // === NOMBRE ===
-  else if (estado.paso === 'nombre' && (esGenerico || intent === 'captura_texto_general')) {
-    estado.datos.nombre = limpiarHTML(queryText);
+else if (estado.paso === 'nombre' && (esGenerico || intent === 'captura_texto_general')) {
+  const texto = limpiarHTML(queryText);
+  if (/^\d+$/.test(texto)) {
+    mensajes.push("⚠️ Por favor, ingresa tu *nombre*, no un número.");
+  } else {
+    estado.datos.nombre = texto;
     estado.paso = 'edad';
     mensajes.push("✅ Gracias. Ahora dime tu *edad*:");
   }
+}
 
   // === EDAD ===
- else if (estado.paso === 'edad' && (esGenerico || intent === 'captura_texto_general')) {
- const edadNum = parseInt(limpiarHTML(queryText));
+else if (estado.paso === 'edad' && (esGenerico || intent === 'captura_texto_general')) {
+  const edadNum = parseInt(limpiarHTML(queryText));
   if (isNaN(edadNum) || edadNum < 6 || edadNum > 22) {
     mensajes.push("⚠️ Por favor, ingresa una edad válida entre 6 y 22 años.");
   } else {
@@ -106,21 +111,21 @@ const esGenerico = intent === 'captura_texto_general';
   }
 }
 
-  // === CELULAR ===
-  else if (estado.paso === 'celular' && (esGenerico || intent === 'captura_texto_general')) {
-const celular = limpiarHTML(queryText);
-if (!/^\d{9}$/.test(celular)) {
-      mensajes.push("⚠️ El número debe tener 9 dígitos. Intenta otra vez:");
-    } else {
-      estado.datos.celular = celular;
-      estado.paso = 'depresion';
-      estado.index = 0;
-      estado.respuestas = [];
-      mensajes.push(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
-      mensajes.push("🧠 Iniciamos con la prueba PHQ-9 de depresión.");
-      mensajes.push(`PRIMERA PREGUNTA:\n${preguntasDepresion[0]}\n(Responde con un número del 0 al 3)`);
-    }
+// === CELULAR ===
+else if (estado.paso === 'celular' && (esGenerico || intent === 'captura_texto_general')) {
+  const celular = limpiarHTML(queryText).replace(/\D/g, ''); // solo números
+  if (celular.length !== 9) {
+    mensajes.push("⚠️ El número debe tener exactamente 9 dígitos. Intenta otra vez:");
+  } else {
+    estado.datos.celular = celular;
+    estado.paso = 'depresion';
+    estado.index = 0;
+    estado.respuestas = [];
+    mensajes.push(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
+    mensajes.push("🧠 Iniciamos con la prueba PHQ-9 de depresión.");
+    mensajes.push(`PRIMERA PREGUNTA:\n${preguntasDepresion[0]}\n(Responde con un número del 0 al 3)`);
   }
+}
 
   // === PREGUNTAS DE DEPRESIÓN ===
   else if (estado.paso === 'depresion' && (esGenerico || intent === 'captura_texto_general')) {
