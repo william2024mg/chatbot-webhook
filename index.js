@@ -169,19 +169,29 @@ if (!/^\d{9}$/.test(celular)) {
 }
 
     
-  // === RESPUESTA POR DEFECTO ===
- 
-    else if (textoUsuario === 'sí' && estado.paso === 'fin') {
+
+// === RESPUESTA POR DEFECTO ===
+
+else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin') {
   estado.paso = 'ansiedad';
   estado.index = 0;
   estado.respuestas = [];
   mensajes.push("🧠 Iniciamos con la prueba GAD-7 de ansiedad.");
   mensajes.push(`PRIMERA PREGUNTA:\n${preguntasAnsiedad[0]}\n(Responde con un número del 0 al 3)`);
 }
-    else {
-    mensajes.push("⚠️ No entendí. Escribe 'inicio' para comenzar de nuevo.");
-  }
 
+else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_ansiedad') {
+  estado.paso = 'estres';
+  estado.index = 0;
+  estado.respuestas = [];
+  mensajes.push("📚 Iniciamos con la prueba de *estrés académico*.");
+  mensajes.push("PRIMERA PREGUNTA:\n(Agrega aquí tu primera pregunta del bloque de estrés académico)\n(Responde con un número del 0 al 3)");
+}
+
+else {
+  mensajes.push("⚠️ No entendí. Escribe 'inicio' para comenzar de nuevo.");
+}
+  
   // Enviar respuesta a Dialogflow
   res.json({
     fulfillmentMessages: mensajes.map(text => ({ text: { text: [text] } }))
