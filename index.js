@@ -70,6 +70,30 @@ function interpretarEstres(p) {
   return "muy alto";
 }
 
+// ========================== AUTOESTIMA (ESCALA DE ROSENBERG) ==========================
+
+const preguntasAutoestima = [
+  "Me siento bien conmigo mismo.",
+  "Creo que tengo cualidades positivas.",
+  "Puedo hacer las cosas tan bien como la mayoría de los demás.",
+  "Tengo una actitud positiva hacia mí mismo.",
+  "En general, estoy satisfecho conmigo mismo.",
+  "A veces siento que no soy bueno para nada.",
+  "En ocasiones pienso que no valgo mucho.",
+  "Me gustaría tener más respeto por mí mismo.",
+  "A veces pienso que soy un fracaso.",
+  "No tengo mucho de lo que estar orgulloso."
+];
+
+// Índices de preguntas que deben invertirse al puntuar (0-based)
+const indicesInvertidosAutoestima = [5, 6, 7, 8, 9];
+
+function interpretarAutoestima(p) {
+  if (p >= 30) return "alta";
+  if (p >= 26) return "media";
+  return "baja";
+}
+
 const sesiones = {};
 
 app.post('/webhook', (req, res) => {
@@ -220,7 +244,39 @@ else if (estado.paso === 'estres' && (esGenerico || intent === 'captura_texto_ge
   }
 }
     
+// === PREGUNTAS DE AUTOESTIMA (ROSENBERG) ===
+else if (estado.paso === 'autoestima' && (esGenerico || intent === 'captura_texto_general')) {
+  const respuesta = parseInt(textoUsuario);
+  if (isNaN(respuesta) || respuesta < 1 || respuesta > 4) {
+    mensajes.push("⚠️ Responde solo con un número del 1 al 4 (1 = Totalmente en desacuerdo, 4 = Totalmente de acuerdo).");
+  } else {
+    // Invertir si es una pregunta negativa
+    const indexActual = estado.index;
+    const puntuacion = indicesInvertidosAutoestima.includes(indexActual)
+      ? 5 - respuesta  // invierte la escala: 4→1, 3→2, 2→3, 1→4
+      : respuesta;
 
+    estado.respuestas.push(puntuacion);
+    estado.index++;
+
+    if (estado.index < preguntasAutoestima.length) {
+      mensajes.push(`${preguntasAutoestima[estado.index]}\n(Responde con un número del 1 al 4)`);
+    } else {
+      const total = estado.respuestas.reduce((a, b) => a + b, 0);
+      const nivel = interpretarAutoestima(total);
+      mensajes.push(`💬 Resultado de *Autoestima* (Escala de Rosenberg):`);
+      mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
+      mensajes.push(`🎂 Edad: ${estado.datos.edad}`);
+      mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
+      mensajes.push(`📊 Puntaje total: *${total}*`);
+      mensajes.push(`🔎 Nivel de autoestima: *${nivel}*`);
+      mensajes.push("¿Deseas continuar con el siguiente bloque? (sí / no)");
+      estado.paso = 'fin_autoestima';
+    }
+  }
+}
+
+  
 // === RESPUESTA POR DEFECTO ===
 
 else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin') {
@@ -239,7 +295,15 @@ else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'f
   mensajes.push(`PRIMERA PREGUNTA:\n${preguntasEstres[0]}\n(Responde con un número del 1 al 5, donde 1 = Nunca, 2 = rara vez, 3 = algunas veces, 4 = casi siempre, 5 = Siempre)`);
 }
 
+else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_estres') {
+  estado.paso = 'autoestima';
+  estado.index = 0;
+  estado.respuestas = [];
+  mensajes.push("💬 Iniciamos con la prueba de *Autoestima* (Escala de Rosenberg).");
+  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasAutoestima[0]}\n(Responde con un número del 1 al 4, donde 1 = Totalmente en desacuerdo y 4 = Totalmente de acuerdo)`);
+}
 
+  
 else {
   mensajes.push("⚠️ No entendí. Escribe 'inicio' para comenzar de nuevo.");
 }
