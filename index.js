@@ -49,6 +49,27 @@ function interpretarAnsiedad(p) {
   return "severa";
 }
 
+// ========================== ESTRESORES ACADÉMICOS (SISCO) ==========================
+
+const preguntasEstres = [
+  "¿Tienes muchos trabajos escolares al mismo tiempo?",
+  "¿Los exámenes te generan mucha presión?",
+  "¿Los profesores te dejan demasiadas tareas?",
+  "¿Tienes poco tiempo para cumplir con tus obligaciones académicas?",
+  "¿Te estresas por no entender algunos temas?",
+  "¿Te sientes presionado por obtener buenas calificaciones?",
+  "¿Los trabajos en grupo te generan estrés?",
+  "¿Tienes dificultades para organizar tus tiempos de estudio?",
+  "¿Sientes que la carga académica supera tu capacidad?"
+];
+
+function interpretarEstres(p) {
+  if (p <= 17) return "bajo";
+  if (p <= 26) return "medio";
+  if (p <= 35) return "alto";
+  return "muy alto";
+}
+
 const sesiones = {};
 
 app.post('/webhook', (req, res) => {
@@ -173,6 +194,31 @@ else if (estado.paso === 'celular' && (esGenerico || intent === 'captura_texto_g
   }
 }
 
+// === PREGUNTAS DE ESTRESORES ACADÉMICOS ===
+else if (estado.paso === 'estres' && (esGenerico || intent === 'captura_texto_general')) {
+  const respuesta = parseInt(textoUsuario);
+  if (isNaN(respuesta) || respuesta < 1 || respuesta > 5) {
+    mensajes.push("⚠️ Responde solo con un número del 1 al 5 (1 = Nunca, 2 = rara vez, 3 = algunas veces, 4 = casi siempre, 5 = Siempre).");
+  } else {
+    estado.respuestas.push(respuesta);
+    estado.index++;
+
+    if (estado.index < preguntasEstres.length) {
+      mensajes.push(`${preguntasEstres[estado.index]}\n(Responde con un número del 1 al 5)`);
+    } else {
+      const total = estado.respuestas.reduce((a, b) => a + b, 0);
+      const nivel = interpretarEstres(total);
+      mensajes.push(`📚 Resultado de *Estresores Académicos* (Inventario SISCO):`);
+      mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
+      mensajes.push(`🎂 Edad: ${estado.datos.edad}`);
+      mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
+      mensajes.push(`📊 Puntaje total: *${total}*`);
+      mensajes.push(`🔎 Nivel de estrés académico: *${nivel}*`);
+      mensajes.push("¿Deseas continuar con el siguiente bloque? (sí / no)");
+      estado.paso = 'fin_estres';
+    }
+  }
+}
     
 
 // === RESPUESTA POR DEFECTO ===
@@ -189,9 +235,10 @@ else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'f
   estado.paso = 'estres';
   estado.index = 0;
   estado.respuestas = [];
-  mensajes.push("📚 Iniciamos con la prueba de *estrés académico*.");
-  mensajes.push("PRIMERA PREGUNTA:\n(Agrega aquí tu primera pregunta del bloque de estrés académico)\n(Responde con un número del 0 al 3)");
+  mensajes.push("📚 Iniciamos con la prueba de *estrés académico* (Inventario SISCO).");
+  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasEstres[0]}\n(Responde con un número del 1 al 5, donde 1 = Nunca, 2 = rara vez, 3 = algunas veces, 4 = casi siempre, 5 = Siempre)`);
 }
+
 
 else {
   mensajes.push("⚠️ No entendí. Escribe 'inicio' para comenzar de nuevo.");
