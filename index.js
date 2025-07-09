@@ -6,76 +6,72 @@ const port = process.env.PORT || 10000;
 
 app.use(bodyParser.json());
 
-// ========================== DEPRESIÓN - ESCALA DE ZUNG (D.D.) ==========================
+// ========================== DEPRESIÓN - ESCALA CDI DE KOVACS ==========================
 
-const preguntasDepresionZung = [
-  "Me siento decaído y triste.",
-  "Las mañanas son las peores horas para mí.",
-  "Lloro o siento ganas de llorar.",
-  "Tengo problemas para dormir durante la noche.",
-  "Tengo buen apetito.",
-  "Disfruto de las cosas igual que antes.",
-  "Me cuesta concentrarme.",
-  "Me muevo más despacio que antes.",
-  "Estoy preocupado por mi apariencia.",
-  "Me siento con ganas de llorar o con tristeza en el pecho.",
-  "Me cuesta trabajar y hacer mis actividades.",
-  "Duermo bien por las noches.",
-  "Me siento útil y necesario.",
-  "Me siento con energía.",
-  "Me siento desesperanzado respecto al futuro.",
-  "Estoy más irritable que antes.",
-  "Encuentro fácil tomar decisiones.",
-  "Me siento valioso y respetado.",
-  "Tengo pensamientos de que sería mejor no estar vivo.",
-  "Encuentro placer en las cosas."
+const preguntasKovacs = [
+  "Estoy triste de vez en cuando / Estoy triste muchas veces / Estoy siempre triste",
+  "No lloro más que de costumbre / Lloro más ahora que antes / Lloro todo el tiempo",
+  "A veces me cuesta hacer cosas / Me cuesta hacer muchas cosas / Me cuesta hacer todo",
+  "Duermo igual que siempre / Duermo más que antes / Duermo menos que antes",
+  "Tengo buen apetito / Mi apetito es menor / No tengo apetito",
+  "Me gusta jugar con mis amigos / Me gusta menos jugar / No me gusta jugar con nadie",
+  "Creo que soy bueno / Soy como los demás / Me siento inútil",
+  "Me siento querido / A veces me siento solo / Me siento solo todo el tiempo",
+  "Me enojo de vez en cuando / Me enojo frecuentemente / Estoy siempre enojado",
+  "Soy feliz la mayor parte del tiempo / Soy feliz a veces / Nunca soy feliz",
+  "Creo que las cosas mejorarán / No sé si mejorarán / Nada mejorará",
+  "Hago bien las cosas / Me equivoco a veces / Siempre me equivoco",
+  "Tengo energía para hacer cosas / A veces estoy cansado / Siempre estoy cansado",
+  "Quiero estar con mi familia / A veces quiero estar solo / Siempre quiero estar solo",
+  "Me esfuerzo en la escuela / A veces no me esfuerzo / No me esfuerzo nada",
+  "Me concentro bien / Me distraigo fácilmente / No puedo concentrarme",
+  "Me siento bien conmigo mismo / A veces no me gusto / Me siento mal conmigo mismo",
+  "Me porto bien / A veces me porto mal / Siempre me porto mal",
+  "Creo que la gente me quiere / A veces pienso que no / Creo que nadie me quiere",
+  "Me divierto a veces / No me divierto nunca / Me aburro siempre",
+  "Me preocupo de vez en cuando / Me preocupo mucho / Me preocupo todo el tiempo",
+  "Quiero seguir viviendo / A veces no quiero vivir / No quiero vivir",
+  "Tengo miedo a veces / Me da miedo todo / Tengo miedo constante",
+  "Creo que soy inteligente / Soy como los demás / Soy tonto",
+  "Puedo hablar de mis sentimientos / A veces no puedo / Nunca puedo",
+  "Me siento aceptado / Me siento inseguro / Me siento rechazado",
+  "Hago amigos con facilidad / Me cuesta hacer amigos / No tengo amigos"
 ];
 
-const indicesInvertidosDepresionZung = [4, 5, 11, 12, 13, 16, 17, 19];
-
-function interpretarDepresionZung(p) {
-  if (p < 40) return "mínima o nula";
-  if (p < 50) return "leve";
-  if (p < 60) return "moderada";
-  return "severa";
+function interpretarKovacs(puntaje) {
+  if (puntaje < 19) return "Depresión leve o ausente";
+  if (puntaje < 25) return "Riesgo moderado";
+  return "Depresión significativa";
 }
+
 
 function limpiarHTML(texto) {
   return texto.replace(/<\/?[^>]+(>|$)/g, "");
 }
 
 
-// ========================== ANSIEDAD - ESCALA DE ZUNG (D.A.) ==========================
+// ========================== ANSIEDAD INFANTIL (SCARED - Versión corta 10preguntas) ==========================
 
-const preguntasAnsiedadZung = [
-  "Me siento más nervioso(a) y tenso(a) de lo habitual.",
-  "Tengo miedo sin motivo aparente.",
-  "Me siento asustado(a) o en pánico sin razón.",
-  "Me siento en tensión o agitado(a).",
-  "Me cuesta conciliar el sueño por la preocupación.",
-  "Tengo temblores en las manos.",
-  "Me siento débil y me canso fácilmente.",
-  "Me preocupa sufrir un colapso o desmayo.",
-  "Me siento con palpitaciones o aceleración del corazón.",
-  "Me pongo sudoroso(a) sin razón.",
-  "Me siento inquieto(a) e incapaz de quedarme quieto(a).",
-  "Tengo dificultad para respirar sin razón física.",
-  "Tengo miedo de que ocurra lo peor.",
-  "Me siento mareado(a) o con la cabeza vacía.",
-  "Me tiembla todo el cuerpo.",
-  "Tengo náuseas o malestar estomacal.",
-  "Me siento débil en brazos y piernas.",
-  "Me sobresalto fácilmente.",
-  "Tengo dificultad para tragar.",
-  "Me siento que pierdo el control."
+const preguntasAnsiedadSCARED = [
+  "Me preocupa que algo malo le pase a alguien de mi familia.",
+  "Tengo miedo de dormir solo.",
+  "Me da miedo estar solo en casa.",
+  "Me preocupo mucho por cosas malas que podrían pasar.",
+  "Me asusto fácilmente.",
+  "Tengo miedo de ir a la escuela.",
+  "Me preocupo cuando me separo de mis padres.",
+  "Me siento tenso o nervioso.",
+  "Me preocupa que algo malo me pase a mí.",
+  "Me da miedo cuando tengo que hacer algo frente a los demás."
 ];
 
-function interpretarAnsiedadZung(p) {
-  if (p <= 44) return "mínima o nula";
-  if (p <= 59) return "leve";
-  if (p <= 74) return "moderada";
+function interpretarAnsiedadSCARED(p) {
+  if (p <= 7) return "mínima o nula";
+  if (p <= 12) return "leve";
+  if (p <= 16) return "moderada";
   return "severa";
 }
+
 
 
 // ========================== ESTRESORES ACADÉMICOS (SISCO) ==========================
@@ -192,72 +188,69 @@ else if (estado.paso === 'celular' && (esGenerico || intent === 'captura_texto_g
     mensajes.push("⚠️ El número debe tener exactamente 9 dígitos. Intenta otra vez:");
   } else {
     estado.datos.celular = celular;
-    estado.paso = 'depresion_zung';
-    estado.index = 0;
-    estado.respuestas = [];
-    mensajes.push(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
-    mensajes.push("🧠 Iniciamos con la *Escala de Depresión de Zung (D.D.)*.");
-  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasDepresionZung[0]}\n(Responde con un número del 1 al 4, donde 1 = Rara vez o nunca y 4 = Casi siempre)`);
-  }
+    estado.paso = 'depresion_kovacs';
+estado.index = 0;
+estado.respuestas = [];
+mensajes.push(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
+mensajes.push("🧠 Iniciamos con la *Escala de Depresión Infantil de Kovacs*.");
+mensajes.push(`PRIMERA PREGUNTA:\n${preguntasKovacs[0]}\n(Responde con un número: 0 = primera opción, 1 = segunda opción, 2 = tercera opción)`);
+
 }
 
   // === PREGUNTAS DE DEPRESIÓN ===
- else if (estado.paso === 'depresion_zung' && (esGenerico || intent === 'captura_texto_general')) {
+ else if (estado.paso === 'depresion_kovacs' && (esGenerico || intent === 'captura_texto_general')) {
   const respuesta = parseInt(textoUsuario);
-  if (isNaN(respuesta) || respuesta < 1 || respuesta > 4) {
-    mensajes.push("⚠️ Responde solo con un número del 1 al 4 (1 = Rara vez o nunca, 4 = Casi siempre).");
+  if (isNaN(respuesta) || respuesta < 0 || respuesta > 2) {
+    mensajes.push("⚠️ Responde con 0 (primera opción), 1 (segunda), o 2 (tercera).");
   } else {
-    const index = estado.index;
-    const puntuacion = indicesInvertidosDepresionZung.includes(index)
-      ? 5 - respuesta  // Inversión: 4→1, 3→2, etc.
-      : respuesta;
-
-    estado.respuestas.push(puntuacion);
+    estado.respuestas.push(respuesta);
     estado.index++;
 
-    if (estado.index < preguntasDepresionZung.length) {
-      mensajes.push(`${preguntasDepresionZung[estado.index]}\n(Responde con un número del 1 al 4)`);
+    if (estado.index < preguntasKovacs.length) {
+      mensajes.push(`${preguntasKovacs[estado.index]}\n(0 = primera opción, 1 = segunda, 2 = tercera)`);
     } else {
       const total = estado.respuestas.reduce((a, b) => a + b, 0);
-      const nivel = interpretarDepresionZung(total);
-      mensajes.push(`🧠 Resultado de *Depresión* (Escala de Zung):`);
+      const nivel = interpretarKovacs(total);
+      mensajes.push(`🧠 Resultado de *Depresión Infantil (CDI Kovacs)*:`);
       mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
       mensajes.push(`🎂 Edad: ${estado.datos.edad}`);
       mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
       mensajes.push(`📊 Puntaje total: *${total}*`);
       mensajes.push(`🔎 Nivel de depresión: *${nivel}*`);
       mensajes.push("¿Deseas continuar con el bloque de ansiedad? (sí / no)");
-      estado.paso = 'fin_depresion_zung';
+      estado.paso = 'fin_depresion_kovacs';
     }
   }
 }
 
+
     
-// === PREGUNTAS DE ANSIEDAD ZUNG (D.A.) ===
-else if (estado.paso === 'ansiedad_zung' && (esGenerico || intent === 'captura_texto_general')) {
+// === PREGUNTAS DE ANSIEDAD INFANTIL (SCARED  - Version corta) ===
+else if (estado.paso === 'ansiedad_scared' && (esGenerico || intent === 'captura_texto_general')) {
   const respuesta = parseInt(textoUsuario);
-  if (isNaN(respuesta) || respuesta < 1 || respuesta > 4) {
-    mensajes.push("⚠️ Responde solo con un número del 1 al 4 (1 = Rara vez o nunca, 4 = Casi siempre).");
+  if (isNaN(respuesta) || respuesta < 0 || respuesta > 2) {
+    mensajes.push("⚠️ Responde con un número del 0 al 2 (0 = Nunca, 1 = A veces, 2 = A menudo).");
   } else {
     estado.respuestas.push(respuesta);
     estado.index++;
 
-    if (estado.index < preguntasAnsiedadZung.length) {
-      mensajes.push(`${preguntasAnsiedadZung[estado.index]}\n(Responde con un número del 1 al 4)`);
+    if (estado.index < preguntasAnsiedadSCARED.length) {
+      mensajes.push(`${preguntasAnsiedadSCARED[estado.index]}\n(0 = Nunca, 1 = A veces, 2 = A menudo)`);
     } else {
       const total = estado.respuestas.reduce((a, b) => a + b, 0);
-      const nivel = interpretarAnsiedadZung(total);
-      mensajes.push(`🧠 Resultado de *Ansiedad* (Escala de Zung):`);
+      const nivel = interpretarAnsiedadSCARED(total);
+      mensajes.push(`🧠 Resultado de *Ansiedad Infantil* (Test SCARED – versión corta):`);
       mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
       mensajes.push(`🎂 Edad: ${estado.datos.edad}`);
       mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
       mensajes.push(`📊 Puntaje total: *${total}*`);
       mensajes.push(`🔎 Nivel de ansiedad: *${nivel}*`);
       mensajes.push("¿Deseas continuar con el siguiente bloque? (sí / no)");
-      estado.paso = 'fin_ansiedad_zung';
+      estado.paso = 'fin_ansiedad_scared';
     }
   }
 }
+
 
 
 // === PREGUNTAS DE ESTRESORES ACADÉMICOS ===
@@ -290,7 +283,7 @@ else if (estado.paso === 'estres' && (esGenerico || intent === 'captura_texto_ge
 else if (estado.paso === 'autoestima' && (esGenerico || intent === 'captura_texto_general')) {
   const respuesta = parseInt(textoUsuario);
   if (isNaN(respuesta) || respuesta < 1 || respuesta > 4) {
-    mensajes.push("⚠️ Responde solo con un número del 1 al 4 (1 = Totalmente en desacuerdo, 4 = Totalmente de acuerdo).");
+    mensajes.push("⚠️ Responde solo con un número del 1 al 4 (1 = Totalmente en desacuerdo, 2= en desacuerdo, 3= de acuerdo, 4 = Totalmente de acuerdo).");
   } else {
     // Invertir si es una pregunta negativa
     const indexActual = estado.index;
@@ -321,12 +314,12 @@ else if (estado.paso === 'autoestima' && (esGenerico || intent === 'captura_text
   
 // === RESPUESTA POR DEFECTO ===
 
-else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_depresion_zung') {
-  estado.paso = 'ansiedad_zung';
+else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_depresion_kovacs') {
+  estado.paso = 'ansiedad_scared';
   estado.index = 0;
   estado.respuestas = [];
-  mensajes.push("🧠 Iniciamos con la *Escala de Ansiedad de Zung (D.A.)*.");
-  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasAnsiedadZung[0]}\n(Responde con un número del 1 al 4, donde 1 = Rara vez o nunca y 4 = Casi siempre)`);
+   mensajes.push("🧠 Iniciamos con la prueba de *Ansiedad Infantil* (SCARED – versión corta).");
+  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasAnsiedadSCARED[0]}\n(0 = Nunca, 1 = A veces, 2 = A menudo)`);
 }
 
 
