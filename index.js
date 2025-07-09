@@ -44,24 +44,39 @@ function limpiarHTML(texto) {
   return texto.replace(/<\/?[^>]+(>|$)/g, "");
 }
 
-// ========================== ANSIEDAD (GAD-7) ==========================
 
-const preguntasAnsiedad = [
-  "¿Te has sentido nervioso, ansioso o al borde?",
-  "¿No has podido parar o controlar tu preocupación?",
-  "¿Te has preocupado demasiado por diferentes cosas?",
-  "¿Has tenido dificultad para relajarte?",
-  "¿Te has sentido tan inquieto que te cuesta estar quieto?",
-  "¿Te has irritado fácilmente o te has molestado con frecuencia?",
-  "¿Has sentido miedo como si algo terrible pudiera pasar?"
+// ========================== ANSIEDAD - ESCALA DE ZUNG (D.A.) ==========================
+
+const preguntasAnsiedadZung = [
+  "Me siento más nervioso(a) y tenso(a) de lo habitual.",
+  "Tengo miedo sin motivo aparente.",
+  "Me siento asustado(a) o en pánico sin razón.",
+  "Me siento en tensión o agitado(a).",
+  "Me cuesta conciliar el sueño por la preocupación.",
+  "Tengo temblores en las manos.",
+  "Me siento débil y me canso fácilmente.",
+  "Me preocupa sufrir un colapso o desmayo.",
+  "Me siento con palpitaciones o aceleración del corazón.",
+  "Me pongo sudoroso(a) sin razón.",
+  "Me siento inquieto(a) e incapaz de quedarme quieto(a).",
+  "Tengo dificultad para respirar sin razón física.",
+  "Tengo miedo de que ocurra lo peor.",
+  "Me siento mareado(a) o con la cabeza vacía.",
+  "Me tiembla todo el cuerpo.",
+  "Tengo náuseas o malestar estomacal.",
+  "Me siento débil en brazos y piernas.",
+  "Me sobresalto fácilmente.",
+  "Tengo dificultad para tragar.",
+  "Me siento que pierdo el control."
 ];
 
-function interpretarAnsiedad(p) {
-  if (p <= 4) return "mínima o nula";
-  if (p <= 9) return "leve";
-  if (p <= 14) return "moderada";
+function interpretarAnsiedadZung(p) {
+  if (p <= 44) return "mínima o nula";
+  if (p <= 59) return "leve";
+  if (p <= 74) return "moderada";
   return "severa";
 }
+
 
 // ========================== ESTRESORES ACADÉMICOS (SISCO) ==========================
 
@@ -218,28 +233,32 @@ else if (estado.paso === 'celular' && (esGenerico || intent === 'captura_texto_g
 }
 
     
- // === PREGUNTAS DE ANSIEDAD ===
-    else if (estado.paso === 'ansiedad' && (esGenerico || intent === 'captura_texto_general')) {
+// === PREGUNTAS DE ANSIEDAD ZUNG (D.A.) ===
+else if (estado.paso === 'ansiedad_zung' && (esGenerico || intent === 'captura_texto_general')) {
   const respuesta = parseInt(textoUsuario);
-  if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
-    mensajes.push("⚠️ Responde solo con un número del 0 al 3.");
+  if (isNaN(respuesta) || respuesta < 1 || respuesta > 4) {
+    mensajes.push("⚠️ Responde solo con un número del 1 al 4 (1 = Rara vez o nunca, 4 = Casi siempre).");
   } else {
     estado.respuestas.push(respuesta);
     estado.index++;
 
-    if (estado.index < preguntasAnsiedad.length) {
-      mensajes.push(`${preguntasAnsiedad[estado.index]}\n(Responde con un número del 0 al 3)`);
+    if (estado.index < preguntasAnsiedadZung.length) {
+      mensajes.push(`${preguntasAnsiedadZung[estado.index]}\n(Responde con un número del 1 al 4)`);
     } else {
       const total = estado.respuestas.reduce((a, b) => a + b, 0);
-      const nivel = interpretarAnsiedad(total);
-      mensajes.push(`🧠 Resultado GAD-7:\n👤 Nombre: ${estado.datos.nombre}\n🎂 Edad: ${estado.datos.edad}\n📞 Apoderado: ${estado.datos.celular}`);
+      const nivel = interpretarAnsiedadZung(total);
+      mensajes.push(`🧠 Resultado de *Ansiedad* (Escala de Zung):`);
+      mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
+      mensajes.push(`🎂 Edad: ${estado.datos.edad}`);
+      mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
       mensajes.push(`📊 Puntaje total: *${total}*`);
       mensajes.push(`🔎 Nivel de ansiedad: *${nivel}*`);
-      mensajes.push("¿Deseas continuar con el bloque de estrés académico? (sí / no)");
-      estado.paso = 'fin_ansiedad';
+      mensajes.push("¿Deseas continuar con el siguiente bloque? (sí / no)");
+      estado.paso = 'fin_ansiedad_zung';
     }
   }
 }
+
 
 // === PREGUNTAS DE ESTRESORES ACADÉMICOS ===
 else if (estado.paso === 'estres' && (esGenerico || intent === 'captura_texto_general')) {
@@ -302,13 +321,14 @@ else if (estado.paso === 'autoestima' && (esGenerico || intent === 'captura_text
   
 // === RESPUESTA POR DEFECTO ===
 
-else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin') {
-  estado.paso = 'ansiedad';
+else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_depresion_zung') {
+  estado.paso = 'ansiedad_zung';
   estado.index = 0;
   estado.respuestas = [];
-  mensajes.push("🧠 Iniciamos con la prueba GAD-7 de ansiedad.");
-  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasAnsiedad[0]}\n(Responde con un número del 0 al 3)`);
+  mensajes.push("🧠 Iniciamos con la *Escala de Ansiedad de Zung (D.A.)*.");
+  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasAnsiedadZung[0]}\n(Responde con un número del 1 al 4, donde 1 = Rara vez o nunca y 4 = Casi siempre)`);
 }
+
 
 else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_ansiedad') {
   estado.paso = 'estres';
