@@ -6,26 +6,40 @@ const port = process.env.PORT || 10000;
 
 app.use(bodyParser.json());
 
-// ========================== DEPRESION ==========================
-const preguntasDepresion = [
-  "¿Poco interés o placer en hacer cosas?",
-  "¿Te has sentido decaído, deprimido o sin esperanza?",
-  "¿Dificultad para quedarte dormido, o dormir demasiado?",
-  "¿Te has sentido cansado o con poca energía?",
-  "¿Poca autoestima, o te has sentido inútil o fracasado?",
-  "¿Dificultad para concentrarte en cosas como leer o ver televisión?",
-  "¿Te has movido o hablado tan lento que otras personas lo notaron?",
-  "¿Has tenido pensamientos de que estarías mejor muerto o de hacerte daño?",
-  "¿Qué tan difícil han hecho estos problemas tu vida diaria?"
+// ========================== DEPRESIÓN - ESCALA DE ZUNG (D.D.) ==========================
+
+const preguntasDepresionZung = [
+  "Me siento decaído y triste.",
+  "Las mañanas son las peores horas para mí.",
+  "Lloro o siento ganas de llorar.",
+  "Tengo problemas para dormir durante la noche.",
+  "Tengo buen apetito.",
+  "Disfruto de las cosas igual que antes.",
+  "Me cuesta concentrarme.",
+  "Me muevo más despacio que antes.",
+  "Estoy preocupado por mi apariencia.",
+  "Me siento con ganas de llorar o con tristeza en el pecho.",
+  "Me cuesta trabajar y hacer mis actividades.",
+  "Duermo bien por las noches.",
+  "Me siento útil y necesario.",
+  "Me siento con energía.",
+  "Me siento desesperanzado respecto al futuro.",
+  "Estoy más irritable que antes.",
+  "Encuentro fácil tomar decisiones.",
+  "Me siento valioso y respetado.",
+  "Tengo pensamientos de que sería mejor no estar vivo.",
+  "Encuentro placer en las cosas."
 ];
 
-function interpretarDepresion(p) {
-  if (p <= 4) return "mínima o nula";
-  if (p <= 9) return "leve";
-  if (p <= 14) return "moderada";
-  if (p <= 19) return "moderadamente severa";
+const indicesInvertidosDepresionZung = [4, 5, 11, 12, 13, 16, 17, 19];
+
+function interpretarDepresionZung(p) {
+  if (p < 40) return "mínima o nula";
+  if (p < 50) return "leve";
+  if (p < 60) return "moderada";
   return "severa";
 }
+
 function limpiarHTML(texto) {
   return texto.replace(/<\/?[^>]+(>|$)/g, "");
 }
@@ -163,37 +177,46 @@ else if (estado.paso === 'celular' && (esGenerico || intent === 'captura_texto_g
     mensajes.push("⚠️ El número debe tener exactamente 9 dígitos. Intenta otra vez:");
   } else {
     estado.datos.celular = celular;
-    estado.paso = 'depresion';
+    estado.paso = 'depresion_zung';
     estado.index = 0;
     estado.respuestas = [];
     mensajes.push(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
-    mensajes.push("🧠 Iniciamos con la prueba PHQ-9 de depresión.");
-    mensajes.push(`PRIMERA PREGUNTA:\n${preguntasDepresion[0]}\n(Responde con un número del 0 al 3)`);
+    mensajes.push("🧠 Iniciamos con la *Escala de Depresión de Zung (D.D.)*.");
+  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasDepresionZung[0]}\n(Responde con un número del 1 al 4, donde 1 = Rara vez o nunca y 4 = Casi siempre)`);
   }
 }
 
   // === PREGUNTAS DE DEPRESIÓN ===
-  else if (estado.paso === 'depresion' && (esGenerico || intent === 'captura_texto_general')) {
-    const respuesta = parseInt(queryText);
-    if (isNaN(respuesta) || respuesta < 0 || respuesta > 3) {
-      mensajes.push("⚠️ Responde solo con un número del 0 al 3.");
-    } else {
-      estado.respuestas.push(respuesta);
-      estado.index++;
+ else if (estado.paso === 'depresion_zung' && (esGenerico || intent === 'captura_texto_general')) {
+  const respuesta = parseInt(textoUsuario);
+  if (isNaN(respuesta) || respuesta < 1 || respuesta > 4) {
+    mensajes.push("⚠️ Responde solo con un número del 1 al 4 (1 = Rara vez o nunca, 4 = Casi siempre).");
+  } else {
+    const index = estado.index;
+    const puntuacion = indicesInvertidosDepresionZung.includes(index)
+      ? 5 - respuesta  // Inversión: 4→1, 3→2, etc.
+      : respuesta;
 
-      if (estado.index < preguntasDepresion.length) {
-        mensajes.push(`${preguntasDepresion[estado.index]}\n(Responde con un número del 0 al 3)`);
-      } else {
-        const total = estado.respuestas.reduce((a, b) => a + b, 0);
-        const nivel = interpretarDepresion(total);
-        mensajes.push(`🧠 Resultado PHQ-9:\n👤 Nombre: ${estado.datos.nombre}\n🎂 Edad: ${estado.datos.edad}\n📞 Apoderado: ${estado.datos.celular}`);
-        mensajes.push(`📊 Puntaje total: *${total}*`);
-        mensajes.push(`🔎 Nivel de depresión: *${nivel}*`);
-        mensajes.push("¿Deseas continuar con el bloque de ansiedad? (sí / no)");
-        estado.paso = 'fin';
-      }
+    estado.respuestas.push(puntuacion);
+    estado.index++;
+
+    if (estado.index < preguntasDepresionZung.length) {
+      mensajes.push(`${preguntasDepresionZung[estado.index]}\n(Responde con un número del 1 al 4)`);
+    } else {
+      const total = estado.respuestas.reduce((a, b) => a + b, 0);
+      const nivel = interpretarDepresionZung(total);
+      mensajes.push(`🧠 Resultado de *Depresión* (Escala de Zung):`);
+      mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
+      mensajes.push(`🎂 Edad: ${estado.datos.edad}`);
+      mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
+      mensajes.push(`📊 Puntaje total: *${total}*`);
+      mensajes.push(`🔎 Nivel de depresión: *${nivel}*`);
+      mensajes.push("¿Deseas continuar con el bloque de ansiedad? (sí / no)");
+      estado.paso = 'fin_depresion_zung';
     }
   }
+}
+
     
  // === PREGUNTAS DE ANSIEDAD ===
     else if (estado.paso === 'ansiedad' && (esGenerico || intent === 'captura_texto_general')) {
