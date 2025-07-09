@@ -193,10 +193,10 @@ estado.index = 0;
 estado.respuestas = [];
 mensajes.push(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
 mensajes.push("🧠 Iniciamos con la *Escala de Depresión Infantil de Kovacs*.");
-mensajes.push(`PRIMERA PREGUNTA:\n${preguntasKovacs[0]}\n(Responde con un número: 0 = primera opción, 1 = segunda opción, 2 = tercera opción)`);
-
+mensajes.push(`PRIMERA PREGUNTA:\n${preguntasKovacs[0]}\n(Responde con un número: 0 = primera opción, 
+1 = segunda opción, 2 = tercera opción)`);
 }
-
+}
   // === PREGUNTAS DE DEPRESIÓN ===
  else if (estado.paso === 'depresion_kovacs' && (esGenerico || intent === 'captura_texto_general')) {
   const respuesta = parseInt(textoUsuario);
