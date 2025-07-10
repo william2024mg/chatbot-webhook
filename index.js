@@ -274,7 +274,7 @@ else if (estado.paso === 'inicio_estres' && (esGenerico || intent === 'captura_t
       mensajes.push(`📊 Puntaje total: *${total}*`);
       mensajes.push(`🔎 Nivel de estrés académico: *${nivel}*`);
       mensajes.push("¿Deseas continuar con el siguiente bloque? (sí / no)");
-      estado.paso = 'fin_estres';
+      estado.paso = 'fin_inicio_estres';
     }
   }
 }
@@ -323,7 +323,7 @@ else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'f
 }
 
 
-else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_ansiedad') {
+else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_ansiedad_scared') {
   estado.paso = 'inicio_estres';
   estado.index = 0;
   estado.respuestas = [];
