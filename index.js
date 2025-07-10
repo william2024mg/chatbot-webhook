@@ -254,7 +254,7 @@ else if (estado.paso === 'ansiedad_scared' && (esGenerico || intent === 'captura
 
 
 // === PREGUNTAS DE ESTRESORES ACADÉMICOS ===
-else if (estado.paso === 'estres' && (esGenerico || intent === 'captura_texto_general')) {
+else if (estado.paso === 'inicio_estres' && (esGenerico || intent === 'captura_texto_general')) {
   const respuesta = parseInt(textoUsuario);
   if (isNaN(respuesta) || respuesta < 1 || respuesta > 5) {
     mensajes.push("⚠️ Responde solo con un número del 1 al 5 (1 = Nunca, 2 = rara vez, 3 = algunas veces, 4 = casi siempre, 5 = Siempre).");
@@ -324,12 +324,13 @@ else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'f
 
 
 else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_ansiedad') {
-  estado.paso = 'estres';
+  estado.paso = 'inicio_estres';
   estado.index = 0;
   estado.respuestas = [];
   mensajes.push("📚 Iniciamos con la prueba de *estrés académico* (Inventario SISCO).");
   mensajes.push(`PRIMERA PREGUNTA:\n${preguntasEstres[0]}\n(Responde con un número del 1 al 5, donde 1 = Nunca, 2 = rara vez, 3 = algunas veces, 4 = casi siempre, 5 = Siempre)`);
 }
+
 
 else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_estres') {
   estado.paso = 'autoestima';
