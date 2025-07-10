@@ -305,8 +305,11 @@ else if (estado.paso === 'autoestima' && (esGenerico || intent === 'captura_text
       mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
       mensajes.push(`📊 Puntaje total: *${total}*`);
       mensajes.push(`🔎 Nivel de autoestima: *${nivel}*`);
-      mensajes.push("¿Deseas continuar con el siguiente bloque? (sí / no)");
-      estado.paso = 'fin_autoestima';
+      mensajes.push("📝 Has completado los 4 cuestionarios. Gracias por tu participación.");
+mensajes.push("📄 Se está generando tu reporte de salud mental para ser revisado por el especialista.");
+mensajes.push("✅ Puedes cerrar la conversación o escribir *inicio* si deseas volver a empezar.");
+estado.paso = 'completado';
+
     }
   }
 }
