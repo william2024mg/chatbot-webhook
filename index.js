@@ -37,6 +37,19 @@ const preguntasKovacs = [
   "Generalmente hago lo que me dicen / Muchas veces no hago lo que me dicen / Nunca hago lo que me dicen ",
   "Me llevo bien con la gente  / Me peleo muchas veces / Me peleo siempre"
 ];
+// Índices de preguntas con redacción positiva que deben invertirse (basado en tus preguntas actuales)
+const indicesInvertidosKovacs = [
+  1,  // “Nunca me saldrá nada bien…” → positiva
+  2,  // “Hago bien la mayoría de las cosas…” → positiva
+  3,  // “Me divierten muchas cosas…” → positiva
+  6,  // “Me gusta como soy” → positiva
+  13, // “Tengo buen aspecto” → positiva
+  21, // “Tengo muchos amigos” → positiva
+  22, // “Mi trabajo en el colegio es bueno” → positiva
+  24, // “Estoy seguro de que alguien me quiere” → positiva
+  25, // “Generalmente hago lo que me dicen” → positiva
+  26  // “Me llevo bien con la gente” → positiva
+];
 
 function interpretarKovacs(puntaje) {
   if (puntaje < 19) return "Depresión leve o ausente";
@@ -209,7 +222,10 @@ mensajes.push(`PRIMERA PREGUNTA:\n${preguntasKovacs[0]}\n(Responde con un númer
     if (estado.index < preguntasKovacs.length) {
       mensajes.push(`${preguntasKovacs[estado.index]}\n(0 = primera opción, 1 = segunda, 2 = tercera)`);
     } else {
-      const total = estado.respuestas.reduce((a, b) => a + b, 0);
+      const total = estado.respuestas.reduce((acum, respuesta, index) => {
+  const valor = indicesInvertidosKovacs.includes(index) ? 2 - respuesta : respuesta;
+  return acum + valor;
+}, 0);
       const nivel = interpretarKovacs(total);
       mensajes.push(`🧠 Resultado de *Depresión Infantil (CDI Kovacs)*:`);
       mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
