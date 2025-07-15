@@ -39,17 +39,10 @@ const preguntasKovacs = [
 ];
 // Índices de preguntas con redacción positiva que deben invertirse (basado en tus preguntas actuales)
 const indicesInvertidosKovacs = [
-  1,  // “Nunca me saldrá nada bien…” → positiva
-  2,  // “Hago bien la mayoría de las cosas…” → positiva
-  3,  // “Me divierten muchas cosas…” → positiva
-  6,  // “Me gusta como soy” → positiva
-  13, // “Tengo buen aspecto” → positiva
-  21, // “Tengo muchos amigos” → positiva
-  22, // “Mi trabajo en el colegio es bueno” → positiva
-  24, // “Estoy seguro de que alguien me quiere” → positiva
-  25, // “Generalmente hago lo que me dicen” → positiva
-  26  // “Me llevo bien con la gente” → positiva
+  1, 2, 3, 6, 11, 12, 13, 14, 15, 17, 20, 22, 23, 24, 25, 26
 ];
+                                                          
+
 
 function interpretarKovacs(puntaje) {
   if (puntaje < 19) return "Depresión leve o ausente";
@@ -116,11 +109,11 @@ const preguntasAutoestima = [
   "Puedo hacer las cosas tan bien como la mayoría de los demás.",
   "Tengo una actitud positiva hacia mí mismo.",
   "En general, estoy satisfecho conmigo mismo.",
-  "A veces siento que no soy bueno para nada.",
-  "En ocasiones pienso que no valgo mucho.",
-  "Me gustaría tener más respeto por mí mismo.",
-  "A veces pienso que soy un fracaso.",
-  "No tengo mucho de lo que estar orgulloso."
+  "Siento que no tengo mucho de lo que estar orgulloso/a.",
+  "En general, me inclino a pensar que soy un fracasado/a.",
+  "Me gustaría poder sentir más respeto por mí mismo.",
+  "Hay veces que realmente pienso que soy un inútil.",
+  "A veces creo que no soy buena persona."
 ];
 
 // Índices de preguntas que deben invertirse al puntuar (0-based)
