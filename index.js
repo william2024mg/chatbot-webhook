@@ -216,16 +216,19 @@ mensajes.push(`PRIMERA PREGUNTA:\n${preguntasKovacs[0]}\n(Responde con un númer
   if (isNaN(respuesta) || respuesta < 0 || respuesta > 2) {
     mensajes.push("⚠️ Responde con 0 (primera opción), 1 (segunda), o 2 (tercera).");
   } else {
-    estado.respuestas.push(respuesta);
+    const indexActual = estado.index;
+    // Invertir si la pregunta actual es de las que deben invertirse
+    const puntuacion = indicesInvertidosKovacs.includes(indexActual)
+      ? 2 - respuesta  // invierte 0⇄2, 1 queda igual
+      : respuesta;
+
+    estado.respuestas.push(puntuacion);
     estado.index++;
 
     if (estado.index < preguntasKovacs.length) {
       mensajes.push(`${preguntasKovacs[estado.index]}\n(0 = primera opción, 1 = segunda, 2 = tercera)`);
     } else {
-      const total = estado.respuestas.reduce((acum, respuesta, index) => {
-  const valor = indicesInvertidosKovacs.includes(index) ? 2 - respuesta : respuesta;
-  return acum + valor;
-}, 0);
+      const total = estado.respuestas.reduce((a, b) => a + b, 0);
       const nivel = interpretarKovacs(total);
       mensajes.push(`🧠 Resultado de *Depresión Infantil (CDI Kovacs)*:`);
       mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
@@ -238,6 +241,7 @@ mensajes.push(`PRIMERA PREGUNTA:\n${preguntasKovacs[0]}\n(Responde con un númer
     }
   }
 }
+
 
 
     
