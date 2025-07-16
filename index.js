@@ -55,7 +55,6 @@ function limpiarHTML(texto) {
   return texto.replace(/<\/?[^>]+(>|$)/g, "");
 }
 
-
 // ========================== ANSIEDAD INFANTIL (SCARED - Versión corta 10preguntas) ==========================
 
 const preguntasAnsiedadSCARED = [
