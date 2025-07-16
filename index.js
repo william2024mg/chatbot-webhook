@@ -39,7 +39,7 @@ const preguntasKovacs = [
 ];
 // Índices de preguntas con redacción positiva que deben invertirse (basado en tus preguntas actuales)
 const indicesInvertidosKovacs = [
-  1, 2, 3, 6, 11, 12, 13, 14, 15, 17, 20, 22, 23, 24, 25, 26
+  1, 4, 6, 9, 10, 12, 14, 15, 17, 20, 23, 24
 ];
                                                           
 
