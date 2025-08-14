@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Escolar</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; }
+        #chatbox { width: 400px; margin: 50px auto; background: white; border-radius: 8px; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        #messages { height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
+        .msg { margin: 5px 0; }
+        .user { color: blue; }
+        .bot { color: green; }
+        input { width: 80%; padding: 10px; }
+        button { width: 18%; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div id="chatbox">
+        <h3>Chatbot Escolar</h3>
+        <div id="messages"></div>
+        <input type="text" id="userInput" placeholder="Escribe tu mensaje...">
+        <button onclick="enviar()">Enviar</button>
+    </div>
+
+    <script>
+        function enviar() {
+            const input = document.getElementById('userInput');
+            const mensaje = input.value.trim();
+            if (mensaje === "") return;
+            mostrarMensaje("Tú", mensaje, "user");
+            input.value = "";
+
+            // Aquí puedes conectar con tu backend
+            fetch('/webhook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mensaje: mensaje })
+            })
+            .then(res => res.json())
+            .then(data => {
+                mostrarMensaje("Bot", data.respuesta, "bot");
+            })
+            .catch(() => {
+                mostrarMensaje("Bot", "Error al conectar con el servidor.", "bot");
+            });
+        }
+
+        function mostrarMensaje(remitente, texto, clase) {
+            const div = document.createElement('div');
+            div.classList.add('msg', clase);
+            div.textContent = remitente + ": " + texto;
+            document.getElementById('messages').appendChild(div);
+        }
+    </script>
+</body>
+</html>
