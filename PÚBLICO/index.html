@@ -7,45 +7,102 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            background-color: #0078d4;
+            color: white;
+            padding: 15px;
+            width: 100%;
             text-align: center;
-            background-color: #f4f4f4;
-            padding: 20px;
         }
-        #chat-container {
-            display: none; /* Oculto hasta validar token */
-            margin-top: 20px;
+        #chatbox {
+            width: 90%;
+            max-width: 500px;
+            height: 400px;
+            background: white;
+            border: 1px solid #ccc;
+            overflow-y: scroll;
+            padding: 10px;
+            margin-top: 10px;
         }
-        #error-message {
-            color: red;
-            font-weight: bold;
+        .msg {
+            margin: 5px 0;
+        }
+        .user { color: blue; }
+        .bot { color: green; }
+        #userInput {
+            display: flex;
+            width: 90%;
+            max-width: 500px;
+            margin-top: 10px;
+        }
+        #textInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        #sendButton {
+            padding: 10px;
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #sendButton:hover {
+            background-color: #005a9e;
         }
     </style>
 </head>
 <body>
 
-    <h1>Bienvenido al Chatbot Escolar</h1>
-    <p>Validando acceso...</p>
+    <h1>Chatbot Escolar</h1>
+    <div id="chatbox"></div>
 
-    <div id="error-message"></div>
-
-    <div id="chat-container">
-        <!-- Aquí se cargará tu chatbot Dialogflow -->
-        <iframe id="chat-iframe" width="350" height="500" style="border: none;"></iframe>
+    <div id="userInput">
+        <input id="textInput" type="text" placeholder="Escribe tu mensaje...">
+        <button id="sendButton">Enviar</button>
     </div>
 
     <script>
-        // Lista de tokens válidos (puedes mover esto a un backend)
-        const tokensValidos = [
-            "alumno1-abc123",
-            "alumno2-xyz456",
-            "alumno3-789qwe"
-        ];
+        async function sendMessage() {
+            const inputField = document.getElementById("textInput");
+            const message = inputField.value.trim();
+            if (!message) return;
 
-        // Obtener el token desde la URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get("token");
+            // Mostrar mensaje del usuario
+            document.getElementById("chatbox").innerHTML += `<div class="msg user"><b>Tú:</b> ${message}</div>`;
+            inputField.value = "";
 
-        // Verificar si el token es válido
-        if (tokensValidos.includes(token)) {
+            // Enviar mensaje al servidor (que conecta con Dialogflow)
+            const res = await fetch("/webhook", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ queryText: message })
+            });
+
+            const data = await res.json();
+            const botMessage = data.fulfillmentText || "No entendí eso.";
+
+            // Mostrar respuesta del bot
+            document.getElementById("chatbox").innerHTML += `<div class="msg bot"><b>Bot:</b> ${botMessage}</div>`;
+            document.getElementById("chatbox").scrollTop = document.getElementById("chatbox").scrollHeight;
+        }
+
+        document.getElementById("sendButton").addEventListener("click", sendMessage);
+        document.getElementById("textInput").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") sendMessage();
+        });
+    </script>
+
+</body>
+</html>
+
 
 
