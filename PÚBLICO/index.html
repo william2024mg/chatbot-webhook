@@ -7,102 +7,113 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f6f8;
-            margin: 0;
-            padding: 0;
+            background: #f4f6f8;
             display: flex;
             flex-direction: column;
             align-items: center;
+            padding: 20px;
         }
-        h1 {
-            background-color: #0078d4;
-            color: white;
-            padding: 15px;
-            width: 100%;
-            text-align: center;
-        }
-        #chatbox {
+        #chat {
             width: 90%;
             max-width: 500px;
-            height: 400px;
             background: white;
-            border: 1px solid #ccc;
-            overflow-y: scroll;
-            padding: 10px;
-            margin-top: 10px;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            height: 400px;
+            margin-bottom: 10px;
         }
-        .msg {
-            margin: 5px 0;
+        .message {
+            padding: 8px;
+            border-radius: 5px;
+            margin-bottom: 8px;
         }
-        .user { color: blue; }
-        .bot { color: green; }
-        #userInput {
+        .user {
+            background-color: #d1e7dd;
+            text-align: right;
+        }
+        .bot {
+            background-color: #f8d7da;
+        }
+        #inputArea {
             display: flex;
+            gap: 5px;
             width: 90%;
             max-width: 500px;
-            margin-top: 10px;
         }
-        #textInput {
+        input {
             flex: 1;
-            padding: 10px;
+            padding: 8px;
             border: 1px solid #ccc;
-            border-radius: 3px;
+            border-radius: 5px;
         }
-        #sendButton {
-            padding: 10px;
-            background-color: #0078d4;
-            color: white;
+        button {
+            padding: 8px 12px;
+            background-color: #0d6efd;
             border: none;
+            color: white;
+            border-radius: 5px;
             cursor: pointer;
         }
-        #sendButton:hover {
-            background-color: #005a9e;
+        button:hover {
+            background-color: #084298;
         }
     </style>
 </head>
 <body>
-
-    <h1>Chatbot Escolar</h1>
-    <div id="chatbox"></div>
-
-    <div id="userInput">
-        <input id="textInput" type="text" placeholder="Escribe tu mensaje...">
-        <button id="sendButton">Enviar</button>
+    <h2>Chatbot Escolar</h2>
+    <div id="chat"></div>
+    <div id="inputArea">
+        <input type="text" id="message" placeholder="Escribe tu mensaje...">
+        <button onclick="sendMessage()">Enviar</button>
     </div>
 
     <script>
+        const params = new URLSearchParams(window.location.search);
+        const user = params.get("user");
+        const pass = params.get("pass");
+
+        if (!user || !pass) {
+            document.body.innerHTML = "<h3>Acceso no autorizado</h3>";
+            throw new Error("Faltan credenciales en la URL");
+        }
+
+        const chatDiv = document.getElementById("chat");
+
+        function addMessage(text, sender) {
+            const msg = document.createElement("div");
+            msg.classList.add("message", sender);
+            msg.innerText = text;
+            chatDiv.appendChild(msg);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+
         async function sendMessage() {
-            const inputField = document.getElementById("textInput");
-            const message = inputField.value.trim();
+            const message = document.getElementById("message").value;
             if (!message) return;
 
-            // Mostrar mensaje del usuario
-            document.getElementById("chatbox").innerHTML += `<div class="msg user"><b>Tú:</b> ${message}</div>`;
-            inputField.value = "";
+            addMessage(message, "user");
+            document.getElementById("message").value = "";
 
-            // Enviar mensaje al servidor (que conecta con Dialogflow)
-            const res = await fetch("/webhook", {
+            const response = await fetch(`/webhook?user=${user}&pass=${pass}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ queryText: message })
             });
 
-            const data = await res.json();
-            const botMessage = data.fulfillmentText || "No entendí eso.";
+            if (!response.ok) {
+                addMessage("Error de conexión", "bot");
+                return;
+            }
 
-            // Mostrar respuesta del bot
-            document.getElementById("chatbox").innerHTML += `<div class="msg bot"><b>Bot:</b> ${botMessage}</div>`;
-            document.getElementById("chatbox").scrollTop = document.getElementById("chatbox").scrollHeight;
+            const data = await response.json();
+            addMessage(data.fulfillmentText, "bot");
         }
-
-        document.getElementById("sendButton").addEventListener("click", sendMessage);
-        document.getElementById("textInput").addEventListener("keypress", function(e) {
-            if (e.key === "Enter") sendMessage();
-        });
     </script>
-
 </body>
 </html>
+
 
 
 
