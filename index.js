@@ -1,10 +1,31 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-
+const path = require('path');
 const app = express();
 const port = process.env.PORT || 10000;
 
 app.use(bodyParser.json());
+
+// ===== CONFIGURACIÓN DE USUARIOS =====
+const usuariosPermitidos = {
+  "alumno1": { password: "pass123" },
+  "alumno2": { password: "clave456" }
+};
+
+// Middleware para proteger el acceso al chatbot
+app.get('/', (req, res) => {
+  const usuario = req.query.user;
+  const clave = req.query.pass;
+
+  // Validar usuario y contraseña
+  if (!usuario || !clave || !usuariosPermitidos[usuario] || usuariosPermitidos[usuario].password !== clave) {
+    return res.status(403).send('Acceso denegado: usuario o contraseña inválidos.');
+  }
+
+  // Si es válido, servir el chatbot
+  res.sendFile(path.join(__dirname, 'PÚBLICO/index.html'));
+});
+
 
 // ========================== DEPRESIÓN - ESCALA CDI DE KOVACS ==========================
 
