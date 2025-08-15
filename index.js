@@ -1,34 +1,83 @@
+// index.js
+require('dotenv').config();
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
-const app = express();
-const port = process.env.PORT || 10000;
+const crypto = require('crypto');
 
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+// -------- Middlewares base --------
 app.use(bodyParser.json());
 
-// ===== CONFIGURACIÓN DE USUARIOS =====
-const usuariosPermitidos = {
-  "alumno1": { password: "pass123" },
-  "alumno2": { password: "clave456" }
+// IMPORTANTE: no exponemos toda la carpeta 'public' en raíz para evitar bypass.
+// Serviremos 'index.html' SOLO tras validar token/credenciales.
+// Si necesitas archivos estáticos (css/img), sirve en /static:
+app.use('/static', express.static(path.join(__dirname, 'public')));
+
+// =================== CONTROL DE ACCESO ===================
+// Opción A: tokens únicos por alumno (URL personal)
+const tokensValidos = {
+  // token : { alumno, grado }
+  'sc-5to-flavio-9f2c3a': { alumno: 'Flavio', grado: '5to' },
+  'sc-5to-antony-81be22': { alumno: 'Antony', grado: '5to' },
+  // ... agrega más tokens aquí
 };
 
-// Middleware para proteger el acceso al chatbot
-app.get('/', (req, res) => {
-  const usuario = req.query.user;
-  const clave = req.query.pass;
+// Opción B (opcional): usuario + contraseña (query params)
+const usuariosPermitidos = {
+  alumno1: { password: 'pass123', token: 'sc-5to-flavio-9f2c3a' },
+  alumno2: { password: 'clave456', token: 'sc-5to-antony-81be22' },
+};
 
-  // Validar usuario y contraseña
-  if (!usuario || !clave || !usuariosPermitidos[usuario] || usuariosPermitidos[usuario].password !== clave) {
-    return res.status(403).send('Acceso denegado: usuario o contraseña inválidos.');
+// Ruta de acceso con token: https://tu-app/a/:token
+app.get('/a/:token', (req, res) => {
+  const { token } = req.params;
+  if (!token || !tokensValidos[token]) {
+    return res.status(403).send('Acceso denegado (token inválido).');
   }
-
-  // Si es válido, servir el chatbot
-  res.sendFile(path.join(__dirname, 'PÚBLICO/index.html'));
+  // Si usas assets locales en index.html, referencia con /static/archivo.css
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Acceso alternativo por usuario+clave (redirecciona a su token)
+app.get('/', (req, res) => {
+  const user = req.query.user;
+  const pass = req.query.pass;
+  if (!user || !pass || !usuariosPermitidos[user] || usuariosPermitidos[user].password !== pass) {
+    return res
+      .status(403)
+      .send("Acceso denegado. Usa /a/<token> o bien '/?user=alumno1&pass=pass123'.");
+  }
+  const token = usuariosPermitidos[user].token;
+  return res.redirect(`/a/${token}`);
+});
 
-// ========================== DEPRESIÓN - ESCALA CDI DE KOVACS ==========================
+// (Opcional) endpoint para emitir tokens rápidos por consola (desactiva en producción)
+app.get('/admin/genera-token', (req, res) => {
+  const { nombre = 'alumno', grado = '5to' } = req.query;
+  const suf = crypto.randomBytes(3).toString('hex'); // corto y legible
+  const token = `sc-${grado.toLowerCase()}-${nombre.toLowerCase()}-${suf}`;
+  // En producción deberías persistir este token (archivo .json, DB o variable de entorno).
+  return res.json({ token, aviso: 'Agrega este token al objeto tokensValidos del servidor.' });
+});
 
+// =================== WEBHOOK DE DIALOGFLOW ===================
+// Protegemos el webhook: Dialogflow enviará un header x-shared-secret.
+// Configúralo en Dialogflow → Fulfillment → Webhook → Additional headers.
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'SC-2024-CHAT';
+
+app.use('/webhook', (req, res, next) => {
+  const header = req.get('x-shared-secret');
+  if (header !== WEBHOOK_SECRET) {
+    return res.status(403).send('Forbidden (webhook protegido)');
+  }
+  next();
+});
+
+// ======== LÓGICA DEL CUESTIONARIO (tu flujo original, mejor ordenado) ========
 const preguntasKovacs = [
   "Estoy triste de vez en cuando / Estoy triste muchas veces / Estoy siempre triste",
   "Nunca me saldra Nada bien / No estoy seguro de si las cosas me saldran bien / Las cosas me saldran bien",
@@ -58,25 +107,15 @@ const preguntasKovacs = [
   "Generalmente hago lo que me dicen / Muchas veces no hago lo que me dicen / Nunca hago lo que me dicen ",
   "Me llevo bien con la gente  / Me peleo muchas veces / Me peleo siempre"
 ];
-// Índices de preguntas con redacción positiva que deben invertirse (basado en tus preguntas actuales)
-const indicesInvertidosKovacs = [
-  1, 4, 6, 9, 10, 12, 14, 15, 17, 20, 23, 24
-];
-                                                          
+const indicesInvertidosKovacs = [1, 4, 6, 9, 10, 12, 14, 15, 17, 20, 23, 24];
 
-
-function interpretarKovacs(puntaje) {
-  if (puntaje < 19) return "Depresión leve o ausente";
-  if (puntaje < 25) return "Riesgo moderado";
+function interpretarKovacs(p) {
+  if (p < 19) return "Depresión leve o ausente";
+  if (p < 25) return "Riesgo moderado";
   return "Depresión significativa";
 }
 
-
-function limpiarHTML(texto) {
-  return texto.replace(/<\/?[^>]+(>|$)/g, "");
-}
-
-// ========================== ANSIEDAD INFANTIL (SCARED - Versión corta 10preguntas) ==========================
+function limpiarHTML(t) { return (t || '').replace(/<\/?[^>]+(>|$)/g, ""); }
 
 const preguntasAnsiedadSCARED = [
   "Me preocupa que algo malo le pase a alguien de mi familia.",
@@ -90,17 +129,12 @@ const preguntasAnsiedadSCARED = [
   "Me preocupa que algo malo me pase a mí.",
   "Me da miedo cuando tengo que hacer algo frente a los demás."
 ];
-
 function interpretarAnsiedadSCARED(p) {
   if (p <= 7) return "mínima o nula";
   if (p <= 12) return "leve";
   if (p <= 16) return "moderada";
   return "severa";
 }
-
-
-
-// ========================== ESTRESORES ACADÉMICOS (SISCO) ==========================
 
 const preguntasEstres = [
   "¿Tienes muchos trabajos escolares al mismo tiempo?",
@@ -113,15 +147,12 @@ const preguntasEstres = [
   "¿Tienes dificultades para organizar tus tiempos de estudio?",
   "¿Sientes que la carga académica supera tu capacidad?"
 ];
-
 function interpretarEstres(p) {
   if (p <= 17) return "bajo";
   if (p <= 26) return "medio";
   if (p <= 35) return "alto";
   return "muy alto";
 }
-
-// ========================== AUTOESTIMA (ESCALA DE ROSENBERG) ==========================
 
 const preguntasAutoestima = [
   "Me siento bien conmigo mismo.",
@@ -135,10 +166,7 @@ const preguntasAutoestima = [
   "Hay veces que realmente pienso que soy un inútil.",
   "A veces creo que no soy buena persona."
 ];
-
-// Índices de preguntas que deben invertirse al puntuar (0-based)
 const indicesInvertidosAutoestima = [5, 6, 7, 8, 9];
-
 function interpretarAutoestima(p) {
   if (p >= 30) return "alta";
   if (p >= 26) return "media";
@@ -151,245 +179,182 @@ app.post('/webhook', (req, res) => {
   console.log("✅ Webhook recibido");
 
   const sessionId = req.body.session;
-  const queryText = req.body.queryResult.queryText?.toLowerCase();
-  const intent = req.body.queryResult.intent.displayName;
-
-// Si el intent es 'captura_texto_general', ignoramos su nombre y dejamos pasar el texto del usuario según el flujo
-const textoUsuario = req.body.queryResult.queryText?.toLowerCase();
-const esGenerico = intent === 'captura_texto_general';
+  const queryText = (req.body.queryResult?.queryText || '').toLowerCase();
+  const intent = req.body.queryResult?.intent?.displayName || '';
+  const textoUsuario = queryText;
+  const esGenerico = intent === 'captura_texto_general';
 
   if (!sesiones[sessionId]) {
-    sesiones[sessionId] = {
-      paso: 'inicio',
-      datos: {},
-      respuestas: [],
-      index: 0
-    };
+    sesiones[sessionId] = { paso: 'inicio', datos: {}, respuestas: [], index: 0 };
   }
-
   const estado = sesiones[sessionId];
   const mensajes = [];
 
-  // === INICIO ===
+  // INICIO
   if (textoUsuario === 'inicio' || intent === 'inicio_diagnostico') {
-    sesiones[sessionId] = {
-      paso: 'nombre',
-      datos: {},
-      respuestas: [],
-      index: 0
-    };
+    sesiones[sessionId] = { paso: 'nombre', datos: {}, respuestas: [], index: 0 };
     mensajes.push("🧠 Bienvenido al diagnóstico de salud mental.");
     mensajes.push("Por favor, dime tu *nombre*:");
   }
-    
-
-  // === NOMBRE ===
-else if (estado.paso === 'nombre' && (esGenerico || intent === 'captura_texto_general')) {
-  const texto = limpiarHTML(queryText);
-  if (/^\d+$/.test(texto)) {
-    mensajes.push("⚠️ Por favor, ingresa tu *nombre*, no un número.");
-  } else {
-    estado.datos.nombre = texto;
-    estado.paso = 'edad';
-    mensajes.push("✅ Gracias. Ahora dime tu *edad*:");
-  }
-}
-
-  // === EDAD ===
-else if (estado.paso === 'edad' && (esGenerico || intent === 'captura_texto_general')) {
-  const edadNum = parseInt(limpiarHTML(queryText));
-  if (isNaN(edadNum) || edadNum < 6 || edadNum > 22) {
-    mensajes.push("⚠️ Por favor, ingresa una edad válida entre 6 y 22 años.");
-  } else {
-    estado.datos.edad = edadNum;
-    estado.paso = 'celular';
-    mensajes.push("📱 Ahora, ingresa el *celular del apoderado* (9 dígitos):");
-  }
-}
-
-// === CELULAR ===
-else if (estado.paso === 'celular' && (esGenerico || intent === 'captura_texto_general')) {
-  const celular = limpiarHTML(queryText).replace(/\D/g, ''); // solo números
-  if (celular.length !== 9) {
-    mensajes.push("⚠️ El número debe tener exactamente 9 dígitos. Intenta otra vez:");
-  } else {
-    estado.datos.celular = celular;
-    estado.paso = 'depresion_kovacs';
-estado.index = 0;
-estado.respuestas = [];
-mensajes.push(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
-mensajes.push("🧠 Iniciamos con la *Escala de Depresión Infantil de Kovacs*.");
-mensajes.push(`PRIMERA PREGUNTA:\n${preguntasKovacs[0]}\n(Responde con un número: 0 = primera opción, 
-1 = segunda opción, 2 = tercera opción)`);
-}
-}
-  // === PREGUNTAS DE DEPRESIÓN ===
- else if (estado.paso === 'depresion_kovacs' && (esGenerico || intent === 'captura_texto_general')) {
-  const respuesta = parseInt(textoUsuario);
-  if (isNaN(respuesta) || respuesta < 0 || respuesta > 2) {
-    mensajes.push("⚠️ Responde con 0 (primera opción), 1 (segunda), o 2 (tercera).");
-  } else {
-    const indexActual = estado.index;
-    // Invertir si la pregunta actual es de las que deben invertirse
-    const puntuacion = indicesInvertidosKovacs.includes(indexActual)
-      ? 2 - respuesta  // invierte 0⇄2, 1 queda igual
-      : respuesta;
-
-    estado.respuestas.push(puntuacion);
-    estado.index++;
-
-    if (estado.index < preguntasKovacs.length) {
-      mensajes.push(`${preguntasKovacs[estado.index]}\n(0 = primera opción, 1 = segunda, 2 = tercera)`);
+  // NOMBRE
+  else if (estado.paso === 'nombre' && (esGenerico || intent === 'captura_texto_general')) {
+    const texto = limpiarHTML(queryText);
+    if (/^\d+$/.test(texto)) {
+      mensajes.push("⚠️ Por favor, ingresa tu *nombre*, no un número.");
     } else {
-      const total = estado.respuestas.reduce((a, b) => a + b, 0);
-      const nivel = interpretarKovacs(total);
-      mensajes.push(`🧠 Resultado de *Depresión Infantil (CDI Kovacs)*:`);
-      mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
-      mensajes.push(`🎂 Edad: ${estado.datos.edad}`);
-      mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
-      mensajes.push(`📊 Puntaje total: *${total}*`);
-      mensajes.push(`🔎 Nivel de depresión: *${nivel}*`);
-      mensajes.push("¿Deseas continuar con el bloque de ansiedad? (sí / no)");
-      estado.paso = 'fin_depresion_kovacs';
+      estado.datos.nombre = texto;
+      estado.paso = 'edad';
+      mensajes.push("✅ Gracias. Ahora dime tu *edad*:");
     }
   }
-}
-
-
-
-    
-// === PREGUNTAS DE ANSIEDAD INFANTIL (SCARED  - Version corta) ===
-else if (estado.paso === 'ansiedad_scared' && (esGenerico || intent === 'captura_texto_general')) {
-  const respuesta = parseInt(textoUsuario);
-  if (isNaN(respuesta) || respuesta < 0 || respuesta > 2) {
-    mensajes.push("⚠️ Responde con un número del 0 al 2 (0 = Nunca, 1 = A veces, 2 = A menudo).");
-  } else {
-    estado.respuestas.push(respuesta);
-    estado.index++;
-
-    if (estado.index < preguntasAnsiedadSCARED.length) {
-      mensajes.push(`${preguntasAnsiedadSCARED[estado.index]}\n(0 = Nunca, 1 = A veces, 2 = A menudo)`);
+  // EDAD
+  else if (estado.paso === 'edad' && (esGenerico || intent === 'captura_texto_general')) {
+    const edadNum = parseInt(limpiarHTML(queryText));
+    if (isNaN(edadNum) || edadNum < 6 || edadNum > 22) {
+      mensajes.push("⚠️ Por favor, ingresa una edad válida entre 6 y 22 años.");
     } else {
-      const total = estado.respuestas.reduce((a, b) => a + b, 0);
-      const nivel = interpretarAnsiedadSCARED(total);
-      mensajes.push(`🧠 Resultado de *Ansiedad Infantil* (Test SCARED – versión corta):`);
-      mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
-      mensajes.push(`🎂 Edad: ${estado.datos.edad}`);
-      mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
-      mensajes.push(`📊 Puntaje total: *${total}*`);
-      mensajes.push(`🔎 Nivel de ansiedad: *${nivel}*`);
-      mensajes.push("¿Deseas continuar con el siguiente bloque? (sí / no)");
-      estado.paso = 'fin_ansiedad_scared';
+      estado.datos.edad = edadNum;
+      estado.paso = 'celular';
+      mensajes.push("📱 Ahora, ingresa el *celular del apoderado* (9 dígitos):");
     }
   }
-}
-
-
-
-// === PREGUNTAS DE ESTRESORES ACADÉMICOS ===
-else if (estado.paso === 'inicio_estres' && (esGenerico || intent === 'captura_texto_general')) {
-  const respuesta = parseInt(textoUsuario);
-  if (isNaN(respuesta) || respuesta < 1 || respuesta > 5) {
-    mensajes.push("⚠️ Responde solo con un número del 1 al 5 (1 = Nunca, 2 = rara vez, 3 = algunas veces, 4 = casi siempre, 5 = Siempre).");
-  } else {
-    estado.respuestas.push(respuesta);
-    estado.index++;
-
-    if (estado.index < preguntasEstres.length) {
-      mensajes.push(`${preguntasEstres[estado.index]}\n(Responde con un número del 1 al 5)`);
+  // CELULAR
+  else if (estado.paso === 'celular' && (esGenerico || intent === 'captura_texto_general')) {
+    const celular = limpiarHTML(queryText).replace(/\D/g, '');
+    if (celular.length !== 9) {
+      mensajes.push("⚠️ El número debe tener exactamente 9 dígitos. Intenta otra vez:");
     } else {
-      const total = estado.respuestas.reduce((a, b) => a + b, 0);
-      const nivel = interpretarEstres(total);
-      mensajes.push(`📚 Resultado de *Estresores Académicos* (Inventario SISCO):`);
-      mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
-      mensajes.push(`🎂 Edad: ${estado.datos.edad}`);
-      mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
-      mensajes.push(`📊 Puntaje total: *${total}*`);
-      mensajes.push(`🔎 Nivel de estrés académico: *${nivel}*`);
-      mensajes.push("¿Deseas continuar con el siguiente bloque? (sí / no)");
-      estado.paso = 'fin_estres';
+      estado.datos.celular = celular;
+      estado.paso = 'depresion_kovacs';
+      estado.index = 0;
+      estado.respuestas = [];
+      mensajes.push(`✅ Datos guardados:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}`);
+      mensajes.push("🧠 Iniciamos con la *Escala de Depresión Infantil de Kovacs*.");
+      mensajes.push(`PRIMERA PREGUNTA:\n${preguntasKovacs[0]}\n(Responde 0 = primera opción, 1 = segunda, 2 = tercera)`);
     }
   }
-}
-    
-// === PREGUNTAS DE AUTOESTIMA (ROSENBERG) ===
-else if (estado.paso === 'autoestima' && (esGenerico || intent === 'captura_texto_general')) {
-  const respuesta = parseInt(textoUsuario);
-  if (isNaN(respuesta) || respuesta < 1 || respuesta > 4) {
-    mensajes.push("⚠️ Responde solo con un número del 1 al 4 (1 = Totalmente en desacuerdo, 2= en desacuerdo, 3= de acuerdo, 4 = Totalmente de acuerdo).");
-  } else {
-    // Invertir si es una pregunta negativa
-    const indexActual = estado.index;
-    const puntuacion = indicesInvertidosAutoestima.includes(indexActual)
-      ? 5 - respuesta  // invierte la escala: 4→1, 3→2, 2→3, 1→4
-      : respuesta;
-
-    estado.respuestas.push(puntuacion);
-    estado.index++;
-
-    if (estado.index < preguntasAutoestima.length) {
-      mensajes.push(`${preguntasAutoestima[estado.index]}\n(Responde con un número del 1 al 4)`);
+  // DEPRESIÓN (Kovacs)
+  else if (estado.paso === 'depresion_kovacs' && (esGenerico || intent === 'captura_texto_general')) {
+    const r = parseInt(textoUsuario);
+    if (isNaN(r) || r < 0 || r > 2) {
+      mensajes.push("⚠️ Responde 0 (primera), 1 (segunda), o 2 (tercera).");
     } else {
-      const total = estado.respuestas.reduce((a, b) => a + b, 0);
-      const nivel = interpretarAutoestima(total);
-      mensajes.push(`💬 Resultado de *Autoestima* (Escala de Rosenberg):`);
-      mensajes.push(`👤 Nombre: ${estado.datos.nombre}`);
-      mensajes.push(`🎂 Edad: ${estado.datos.edad}`);
-      mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
-      mensajes.push(`📊 Puntaje total: *${total}*`);
-      mensajes.push(`🔎 Nivel de autoestima: *${nivel}*`);
-      mensajes.push("📝 Has completado los 4 cuestionarios. Gracias por tu participación.");
-mensajes.push("📄 Se está generando tu reporte de salud mental para ser revisado por el especialista.");
-mensajes.push("✅ Puedes cerrar la conversación o escribir *inicio* si deseas volver a empezar.");
-estado.paso = 'completado';
+      const i = estado.index;
+      const punt = indicesInvertidosKovacs.includes(i) ? (2 - r) : r;
+      estado.respuestas.push(punt);
+      estado.index++;
 
+      if (estado.index < preguntasKovacs.length) {
+        mensajes.push(`${preguntasKovacs[estado.index]}\n(0, 1 o 2)`);
+      } else {
+        const total = estado.respuestas.reduce((a,b)=>a+b,0);
+        const nivel = interpretarKovacs(total);
+        mensajes.push(`🧠 Resultado *CDI Kovacs*:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}\n📊 Puntaje: *${total}*\n🔎 Nivel: *${nivel}*`);
+        mensajes.push("¿Deseas continuar con *Ansiedad (SCARED)*? (sí / no)");
+        estado.paso = 'fin_depresion_kovacs';
+      }
     }
   }
-}
+  // SIGUIENTE → Ansiedad
+  else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_depresion_kovacs') {
+    estado.paso = 'ansiedad_scared';
+    estado.index = 0;
+    estado.respuestas = [];
+    mensajes.push("🧠 Iniciamos *Ansiedad Infantil* (SCARED – versión corta).");
+    mensajes.push(`PRIMERA PREGUNTA:\n${preguntasAnsiedadSCARED[0]}\n(0 = Nunca, 1 = A veces, 2 = A menudo)`);
+  }
+  // ANSIEDAD (SCARED)
+  else if (estado.paso === 'ansiedad_scared' && (esGenerico || intent === 'captura_texto_general')) {
+    const r = parseInt(textoUsuario);
+    if (isNaN(r) || r < 0 || r > 2) {
+      mensajes.push("⚠️ Responde 0, 1 o 2.");
+    } else {
+      estado.respuestas.push(r);
+      estado.index++;
+      if (estado.index < preguntasAnsiedadSCARED.length) {
+        mensajes.push(`${preguntasAnsiedadSCARED[estado.index]}\n(0, 1, 2)`);
+      } else {
+        const total = estado.respuestas.reduce((a,b)=>a+b,0);
+        const nivel = interpretarAnsiedadSCARED(total);
+        mensajes.push(`🧠 Resultado *Ansiedad (SCARED)*:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}\n📊 Puntaje: *${total}*\n🔎 Nivel: *${nivel}*`);
+        mensajes.push("¿Deseas continuar con *Estrés académico (SISCO)*? (sí / no)");
+        estado.paso = 'fin_ansiedad_scared';
+      }
+    }
+  }
+  // SIGUIENTE → Estrés
+  else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_ansiedad_scared') {
+    estado.paso = 'inicio_estres';
+    estado.index = 0;
+    estado.respuestas = [];
+    mensajes.push("📚 Iniciamos *Estrés académico* (SISCO).");
+    mensajes.push(`${preguntasEstres[0]}\n(1=Nunca, 2=Rara vez, 3=Algunas veces, 4=Casi siempre, 5=Siempre)`);
+  }
+  // ESTRÉS (SISCO)
+  else if (estado.paso === 'inicio_estres' && (esGenerico || intent === 'captura_texto_general')) {
+    const r = parseInt(textoUsuario);
+    if (isNaN(r) || r < 1 || r > 5) {
+      mensajes.push("⚠️ Responde 1 a 5.");
+    } else {
+      estado.respuestas.push(r);
+      estado.index++;
+      if (estado.index < preguntasEstres.length) {
+        mensajes.push(`${preguntasEstres[estado.index]}\n(1 a 5)`);
+      } else {
+        const total = estado.respuestas.reduce((a,b)=>a+b,0);
+        const nivel = interpretarEstres(total);
+        mensajes.push(`📚 Resultado *Estrés académico (SISCO)*:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}\n📊 Puntaje: *${total}*\n🔎 Nivel: *${nivel}*`);
+        mensajes.push("¿Deseas continuar con *Autoestima (Rosenberg)*? (sí / no)");
+        estado.paso = 'fin_estres';
+      }
+    }
+  }
+  // SIGUIENTE → Autoestima
+  else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_estres') {
+    estado.paso = 'autoestima';
+    estado.index = 0;
+    estado.respuestas = [];
+    mensajes.push("💬 Iniciamos *Autoestima* (Rosenberg).");
+    mensajes.push(`${preguntasAutoestima[0]}\n(1=Totalmente en desacuerdo, 2=En desacuerdo, 3=De acuerdo, 4=Totalmente de acuerdo)`);
+  }
+  // AUTOESTIMA (Rosenberg)
+  else if (estado.paso === 'autoestima' && (esGenerico || intent === 'captura_texto_general')) {
+    const r = parseInt(textoUsuario);
+    if (isNaN(r) || r < 1 || r > 4) {
+      mensajes.push("⚠️ Responde 1 a 4.");
+    } else {
+      const i = estado.index;
+      const punt = indicesInvertidosAutoestima.includes(i) ? (5 - r) : r;
+      estado.respuestas.push(punt);
+      estado.index++;
+      if (estado.index < preguntasAutoestima.length) {
+        mensajes.push(`${preguntasAutoestima[estado.index]}\n(1 a 4)`);
+      } else {
+        const total = estado.respuestas.reduce((a,b)=>a+b,0);
+        const nivel = interpretarAutoestima(total);
+        mensajes.push(`💬 Resultado *Autoestima (Rosenberg)*:\n👤 ${estado.datos.nombre}\n🎂 ${estado.datos.edad}\n📞 ${estado.datos.celular}\n📊 Puntaje: *${total}*\n🔎 Nivel: *${nivel}*`);
+        mensajes.push("📝 Has completado los cuestionarios. Gracias por tu participación.");
+        mensajes.push("✅ Escribe *inicio* si deseas volver a empezar.");
+        estado.paso = 'completado';
+      }
+    }
+  }
+  // DEFAULT
+  else {
+    mensajes.push("⚠️ No entendí. Escribe 'inicio' para comenzar de nuevo.");
+  }
 
-  
-// === RESPUESTA POR DEFECTO ===
-
-else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_depresion_kovacs') {
-  estado.paso = 'ansiedad_scared';
-  estado.index = 0;
-  estado.respuestas = [];
-   mensajes.push("🧠 Iniciamos con la prueba de *Ansiedad Infantil* (SCARED – versión corta).");
-  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasAnsiedadSCARED[0]}\n(0 = Nunca, 1 = A veces, 2 = A menudo)`);
-}
-
-
-else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_ansiedad_scared') {
-  estado.paso = 'inicio_estres';
-  estado.index = 0;
-  estado.respuestas = [];
-  mensajes.push("📚 Iniciamos con la prueba de *estrés académico* (Inventario SISCO).");
-  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasEstres[0]}\n(Responde con un número del 1 al 5, donde 1 = Nunca, 2 = rara vez, 3 = algunas veces, 4 = casi siempre, 5 = Siempre)`);
-}
-
-
-else if ((textoUsuario === 'sí' || textoUsuario === 'si') && estado.paso === 'fin_estres') {
-  estado.paso = 'autoestima';
-  estado.index = 0;
-  estado.respuestas = [];
-  mensajes.push("💬 Iniciamos con la prueba de *Autoestima* (Escala de Rosenberg).");
-  mensajes.push(`PRIMERA PREGUNTA:\n${preguntasAutoestima[0]}\n(Responde con un número del 1 al 4, donde 1 = Totalmente en desacuerdo y 4 = Totalmente de acuerdo)`);
-}
-
-  
-else {
-  mensajes.push("⚠️ No entendí. Escribe 'inicio' para comenzar de nuevo.");
-}
-  
-  // Enviar respuesta a Dialogflow
-  res.json({
-    fulfillmentMessages: mensajes.map(text => ({ text: { text: [text] } }))
-  });
+  return res.json({ fulfillmentMessages: mensajes.map(t => ({ text: { text: [t] } })) });
 });
 
-app.listen(port, () => {
-  console.log(`🚀 Servidor corriendo en el puerto ${port}`);
+// Salud del servicio
+app.get('/health', (req, res) => res.json({ ok: true }));
+
+// Levantar servidor (un solo listen)
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
+
 
 
 
