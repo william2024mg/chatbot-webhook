@@ -1,32 +1,51 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Chatbot San Cristóbal</title>
-  <meta name="robots" content="noindex,nofollow">
-  <script src="https://www.gstatic.com/dialogflow-console/fast/messenger/bootstrap.js?v=1"></script>
-  <style>
-    body{margin:0;font-family:system-ui,Arial,sans-serif;background:#f8fafc}
-    h1{margin:16px;font-size:18px}
-    df-messenger{
-      --df-messenger-bot-message:#eef6ff;
-      --df-messenger-user-message:#f1f5f9;
-      --df-messenger-button-titlebar-color:#0ea5e9;
-      --df-messenger-send-icon:#0ea5e9;
-      --df-messenger-font-color:#0f172a;
-      z-index:9999;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Escolar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        #chat-container {
+            display: none; /* Oculto hasta validar token */
+            margin-top: 20px;
+        }
+        #error-message {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-  <h1>Asistente Virtual – I.E.P. San Cristóbal</h1>
-  <df-messenger
-    intent="WELCOME"
-    chat-title="Amigo San Cristóbal"
-    agent-id="TU_AGENT_ID_AQUI"
-    language-code="es">
-  </df-messenger>
-</body>
-</html>
+
+    <h1>Bienvenido al Chatbot Escolar</h1>
+    <p>Validando acceso...</p>
+
+    <div id="error-message"></div>
+
+    <div id="chat-container">
+        <!-- Aquí se cargará tu chatbot Dialogflow -->
+        <iframe id="chat-iframe" width="350" height="500" style="border: none;"></iframe>
+    </div>
+
+    <script>
+        // Lista de tokens válidos (puedes mover esto a un backend)
+        const tokensValidos = [
+            "alumno1-abc123",
+            "alumno2-xyz456",
+            "alumno3-789qwe"
+        ];
+
+        // Obtener el token desde la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get("token");
+
+        // Verificar si el token es válido
+        if (tokensValidos.includes(token)) {
+
 
