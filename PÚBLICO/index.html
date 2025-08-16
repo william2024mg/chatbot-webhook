@@ -1,118 +1,135 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot Escolar</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-        }
-        #chat {
-            width: 90%;
-            max-width: 500px;
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            overflow-y: auto;
-            height: 400px;
-            margin-bottom: 10px;
-        }
-        .message {
-            padding: 8px;
-            border-radius: 5px;
-            margin-bottom: 8px;
-        }
-        .user {
-            background-color: #d1e7dd;
-            text-align: right;
-        }
-        .bot {
-            background-color: #f8d7da;
-        }
-        #inputArea {
-            display: flex;
-            gap: 5px;
-            width: 90%;
-            max-width: 500px;
-        }
-        input {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        button {
-            padding: 8px 12px;
-            background-color: #0d6efd;
-            border: none;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #084298;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chatbot Salud Mental</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #chat-container {
+      width: 400px;
+      height: 600px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
+    }
+    #messages {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .message {
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 80%;
+    }
+    .bot {
+      background: #e3f2fd;
+      align-self: flex-start;
+    }
+    .user {
+      background: #bbdefb;
+      align-self: flex-end;
+    }
+    #input-container {
+      display: flex;
+      border-top: 1px solid #ddd;
+    }
+    #input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      outline: none;
+    }
+    #send {
+      background: #2196f3;
+      color: white;
+      border: none;
+      padding: 0 20px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-    <h2>Chatbot Escolar</h2>
-    <div id="chat"></div>
-    <div id="inputArea">
-        <input type="text" id="message" placeholder="Escribe tu mensaje...">
-        <button onclick="sendMessage()">Enviar</button>
+  <div id="chat-container">
+    <div id="messages"></div>
+    <div id="input-container">
+      <input id="input" type="text" placeholder="Escribe tu mensaje..."/>
+      <button id="send">Enviar</button>
     </div>
+  </div>
 
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const user = params.get("user");
-        const pass = params.get("pass");
+  <script>
+    const messagesContainer = document.getElementById("messages");
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
 
-        if (!user || !pass) {
-            document.body.innerHTML = "<h3>Acceso no autorizado</h3>";
-            throw new Error("Faltan credenciales en la URL");
-        }
+    // Guardar el token del usuario en localStorage
+    let userToken = localStorage.getItem("userToken");
 
-        const chatDiv = document.getElementById("chat");
+    async function initUser() {
+      if (!userToken) {
+        const res = await fetch("http://localhost:3000/init-user", {
+          method: "POST",
+        });
+        const data = await res.json();
+        userToken = data.token;
+        localStorage.setItem("userToken", userToken);
+      }
+    }
 
-        function addMessage(text, sender) {
-            const msg = document.createElement("div");
-            msg.classList.add("message", sender);
-            msg.innerText = text;
-            chatDiv.appendChild(msg);
-            chatDiv.scrollTop = chatDiv.scrollHeight;
-        }
+    function addMessage(text, sender) {
+      const div = document.createElement("div");
+      div.classList.add("message", sender);
+      div.textContent = text;
+      messagesContainer.appendChild(div);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
 
-        async function sendMessage() {
-            const message = document.getElementById("message").value;
-            if (!message) return;
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text) return;
 
-            addMessage(message, "user");
-            document.getElementById("message").value = "";
+      addMessage(text, "user");
+      input.value = "";
 
-            const response = await fetch(`/webhook?user=${user}&pass=${pass}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ queryText: message })
-            });
+      const res = await fetch("http://localhost:3000/dialogflow", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-token": userToken,
+        },
+        body: JSON.stringify({ message: text }),
+      });
 
-            if (!response.ok) {
-                addMessage("Error de conexión", "bot");
-                return;
-            }
+      const data = await res.json();
+      addMessage(data.reply, "bot");
+    }
 
-            const data = await response.json();
-            addMessage(data.fulfillmentText, "bot");
-        }
-    </script>
+    sendBtn.addEventListener("click", sendMessage);
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    initUser();
+  </script>
 </body>
 </html>
+
 
 
 
