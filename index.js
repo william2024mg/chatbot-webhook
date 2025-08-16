@@ -142,7 +142,7 @@ const preguntasKovacs = [
   "Todas las noches me cuesta dormirme  / Muchas noches me cuesta dormirme / Duermo muy bien",
   "Estoy cansado de cuando en cuando  / Estoy cansado muchos días / Estoy cansado siempre",
   "La mayoría de los días no tengo ganas de comer  / Muchos días no tengo ganas de comer / Como muy bien ",
-  "No me preocupa el dolor ni la enfermedad / No me divierto nuncaMuchas veces me preocupa el dolor y la enfermedad  / Siempre me preocupa el dolor y la enfermedad",
+ "No me preocupa el dolor ni la enfermedad / Muchas veces me preocupa el dolor y la enfermedad / Siempre me preocupa el dolor y la enfermedad",
   "Nunca me siento solo / Me siento solo muchas veces  / Me siento solo siempre ",
   "Nunca me divierto en el colegio / Me divierto en el colegio sólo de vez en cuando / Me divierto en el colegio muchas veces",
   "Tengo muchos amigos  / Tengo muchos amigos pero me gustaría tener más  / No tengo amigos ",
@@ -442,16 +442,17 @@ app.post('/auth/login', (req, res) => {
   return res.json({ ok: true, alumno: info.alumno, grado: info.grado });
 });
 
+// OPCIONAL:sirve a frontend para saber si hay sesión
+app.get('/auth/me', autorizarWebhook, (req, res) => {
+  return res.json({ ok: true, user: req.user || null });
+});
 
 // Levantar servidor (un solo listen)
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
 
-// OPCIONAL:sirve a frontend para saber si hay sesión
-app.get('/auth/me', autorizarWebhook, (req, res) => {
-  return res.json({ ok: true, user: req.user || null });
-});
+
 
 
 
