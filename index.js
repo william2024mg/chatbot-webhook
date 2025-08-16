@@ -253,13 +253,7 @@ app.post('/webhook', (req, res) => {
   const estado = sesiones[sessionId];
   const mensajes = [];
 
-
-  if (!sesiones[sessionId]) {
-    sesiones[sessionId] = { paso: 'inicio', datos: {}, respuestas: [], index: 0 };
-  }
-  const estado = sesiones[sessionId];
-  const mensajes = [];
-
+  
   // INICIO
   if (textoUsuario === 'inicio' || intent === 'inicio_diagnostico') {
     sesiones[sessionId] = { paso: 'nombre', datos: {}, respuestas: [], index: 0 };
