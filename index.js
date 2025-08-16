@@ -415,7 +415,6 @@ app.post('/webhook', (req, res) => {
   return res.json({ fulfillmentMessages, fulfillmentText });
 });
 
-});
 
 // Salud del servicio
 app.get('/health', (req, res) => res.json({ ok: true }));
