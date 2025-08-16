@@ -5,17 +5,51 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const crypto = require('crypto');
-
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 // -------- Middlewares base --------
 app.use(bodyParser.json());
+app.use(cookieParser());
 
 // IMPORTANTE: no exponemos toda la carpeta 'public' en raíz para evitar bypass.
 // Serviremos 'index.html' SOLO tras validar token/credenciales.
 // Si necesitas archivos estáticos (css/img), sirve en /static:
 app.use('/static', express.static(path.join(__dirname, 'public')));
+
+// =================== AUTH (JWT) ===================
+const SECRET_JWT = process.env.SECRET_JWT || 'SC-SECRET-JWT'; // cámbialo en producción
+
+function firmarJWT(payload) {
+  return jwt.sign(payload, SECRET_JWT, { expiresIn: '2h' });
+}
+
+function extraerJWT(req) {
+  const auth = req.get('authorization');
+  if (auth && auth.startsWith('Bearer ')) return auth.slice(7);
+  if (req.cookies && req.cookies.jwt) return req.cookies.jwt;
+  return null;
+}
+
+function autorizarWebhook(req, res, next) {
+  // 1) Permitir si viene desde Dialogflow con el header compartido
+  const header = req.get('x-shared-secret');
+  if (header === WEBHOOK_SECRET) return next();
+
+  // 2) Permitir si trae un JWT válido (desde el navegador del alumno)
+  const token = extraerJWT(req);
+  if (!token) return res.status(403).send('Forbidden (falta token o secret)');
+
+  try {
+    req.user = jwt.verify(token, SECRET_JWT);
+    return next();
+  } catch (e) {
+    return res.status(403).send('Forbidden (token inválido)');
+  }
+}
+
 
 // =================== CONTROL DE ACCESO ===================
 // Opción A: tokens únicos por alumno (URL personal)
@@ -38,9 +72,26 @@ app.get('/a/:token', (req, res) => {
   if (!token || !tokensValidos[token]) {
     return res.status(403).send('Acceso denegado (token inválido).');
   }
+
+  // Firmar un JWT y guardarlo en cookie httpOnly
+  const payload = { 
+    token, 
+    alumno: tokensValidos[token].alumno, 
+    grado: tokensValidos[token].grado,
+    sid: `s-${token}` // ID de sesión simple basado en token
+  };
+  const jwtFirmado = firmarJWT(payload);
+
+  res.cookie('jwt', jwtFirmado, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
+  });
+
   // Si usas assets locales en index.html, referencia con /static/archivo.css
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  return res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
 
 // Acceso alternativo por usuario+clave (redirecciona a su token)
 app.get('/', (req, res) => {
@@ -65,17 +116,12 @@ app.get('/admin/genera-token', (req, res) => {
 });
 
 // =================== WEBHOOK DE DIALOGFLOW ===================
-// Protegemos el webhook: Dialogflow enviará un header x-shared-secret.
-// Configúralo en Dialogflow → Fulfillment → Webhook → Additional headers.
+// =================== WEBHOOK DE DIALOGFLOW ===================
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'SC-2024-CHAT';
 
-app.use('/webhook', (req, res, next) => {
-  const header = req.get('x-shared-secret');
-  if (header !== WEBHOOK_SECRET) {
-    return res.status(403).send('Forbidden (webhook protegido)');
-  }
-  next();
-});
+// Permite: 1) x-shared-secret (Dialogflow)  o  2) JWT (alumno navegador)
+app.use('/webhook', autorizarWebhook);
+
 
 // ======== LÓGICA DEL CUESTIONARIO (tu flujo original, mejor ordenado) ========
 const preguntasKovacs = [
@@ -178,11 +224,35 @@ const sesiones = {};
 app.post('/webhook', (req, res) => {
   console.log("✅ Webhook recibido");
 
+  // === Normalización de entrada (Dialogflow o UI navegador) ===
+  const vieneDeDialogflow = !!(req.body && req.body.queryResult);
+
+  if (!vieneDeDialogflow) {
+    // Formato “simple” desde el navegador:
+    // Esperamos { queryText: "texto del alumno" }
+    const qt = (req.body && req.body.queryText) || '';
+    // Inyectamos estructura tipo Dialogflow para reutilizar tu lógica
+    req.body = {
+      session: (req.user && (req.user.sid || req.user.token)) || `ui-${req.ip}`,
+      queryResult: {
+        queryText: qt,
+        intent: { displayName: 'captura_texto_general' }
+      }
+    };
+  }
+
   const sessionId = req.body.session;
   const queryText = (req.body.queryResult?.queryText || '').toLowerCase();
   const intent = req.body.queryResult?.intent?.displayName || '';
   const textoUsuario = queryText;
   const esGenerico = intent === 'captura_texto_general';
+
+  if (!sesiones[sessionId]) {
+    sesiones[sessionId] = { paso: 'inicio', datos: {}, respuestas: [], index: 0 };
+  }
+  const estado = sesiones[sessionId];
+  const mensajes = [];
+
 
   if (!sesiones[sessionId]) {
     sesiones[sessionId] = { paso: 'inicio', datos: {}, respuestas: [], index: 0 };
@@ -344,7 +414,13 @@ app.post('/webhook', (req, res) => {
     mensajes.push("⚠️ No entendí. Escribe 'inicio' para comenzar de nuevo.");
   }
 
-  return res.json({ fulfillmentMessages: mensajes.map(t => ({ text: { text: [t] } })) });
+    // --- RESPUESTA COMPATIBLE PARA DIALOGFLOW Y PARA TU UI ---
+  const fulfillmentMessages = mensajes.map(t => ({ text: { text: [t] } }));
+  const fulfillmentText = mensajes.join('\n');
+
+  return res.json({ fulfillmentMessages, fulfillmentText });
+});
+
 });
 
 // Salud del servicio
@@ -355,6 +431,10 @@ app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
 });
 
+// OPCIONAL:sirve a frontend para saber si hay sesión
+app.get('/auth/me', autorizarWebhook, (req, res) => {
+  return res.json({ ok: true, user: req.user || null });
+});
 
 
 
