@@ -426,6 +426,31 @@ app.post('/webhook', (req, res) => {
 // Salud del servicio
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+// =====paso4============== LOGIN POR USUARIO/CLAVE -> JWT ===================
+app.post('/auth/login', (req, res) => {
+  const { user, pass } = req.body || {};
+  if (!user || !pass || !usuariosPermitidos[user] || usuariosPermitidos[user].password !== pass) {
+    return res.status(403).json({ ok: false, error: 'Credenciales inválidas' });
+  }
+
+  const tokenAlumno = usuariosPermitidos[user].token;
+  const info = tokensValidos[tokenAlumno];
+  if (!info) return res.status(403).json({ ok: false, error: 'Token no asociado' });
+
+  const payload = { token: tokenAlumno, alumno: info.alumno, grado: info.grado, user };
+  const jwtFirmado = firmarJWT(payload);
+
+  // Puedes devolver el JWT o guardarlo en cookie:
+  res.cookie('jwt', jwtFirmado, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
+  });
+
+  return res.json({ ok: true, alumno: info.alumno, grado: info.grado });
+});
+
+
 // Levantar servidor (un solo listen)
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
