@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const app = express();
 const PORT = process.env.PORT || 10000;
-
+const token = process.env.TOKEN;
 // -------- Middlewares base --------
 app.use(bodyParser.json());
 app.use(cookieParser());
@@ -450,6 +450,7 @@ app.get('/auth/me', autorizarWebhook, (req, res) => {
 // Levantar servidor (un solo listen)
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  console.log("El token es:", token);
 });
 
 
