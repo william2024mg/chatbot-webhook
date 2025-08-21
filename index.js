@@ -123,7 +123,13 @@ app.get('/', (req, res) => {
 app.get('/admin/genera-token', (req, res) => {
   const { nombre = 'alumno', grado = '5to' } = req.query;
   const suf = crypto.randomBytes(3).toString('hex'); // corto y legible
-  const token = `sc-${grado.toLowerCase()}-${nombre.toLowerCase()}-${suf}`;
+  const slugify = str => str
+  .toLowerCase()
+  .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quitar acentos
+  .replace(/\s+/g, "-"); // espacios -> guiones
+
+const token = `sc-${slugify(grado)}-${slugify(nombre)}-${Math.random().toString(36).substring(2,8)}`;
+
   // En producción deberías persistir este token (archivo .json, DB o variable de entorno).
   return res.json({ token, aviso: 'Agrega este token al objeto tokensValidos del servidor.' });
 });
