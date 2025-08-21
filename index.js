@@ -487,6 +487,40 @@ app.post('/webhook', (req, res) => {
   return res.json({ fulfillmentMessages, fulfillmentText });
 });
 
+// Ruta de acceso directo con token
+app.get("/a/:token", (req, res) => {
+  const token = req.params.token;
+  // Aquí podrías validar el token en tu BD o lista de alumnos
+  res.send(`
+    <html>
+      <head><title>Chat Alumno</title></head>
+      <body>
+        <h2>Bienvenido al Chat de Diagnóstico</h2>
+        <p>Token: ${token}</p>
+        <div id="chat"></div>
+        <script>
+          // Lógica mínima para abrir el chat y mandar mensajes
+          alert("Escribe 'inicio' para comenzar tu diagnóstico.");
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+// Ruta de login con usuario y pass
+app.get("/", (req, res) => {
+  const { user, pass } = req.query;
+  if (!user || !pass) {
+    return res.send("<h3>Faltan credenciales</h3>");
+  }
+
+  // Aquí validas que user/pass existan (por ahora solo mostramos)
+  const fakeToken = `sc-${user}-${Date.now()}`;
+
+  res.redirect(`/a/${fakeToken}`);
+});
+
+
 
 // Salud del servicio
 app.get('/health', (req, res) => res.json({ ok: true }));
