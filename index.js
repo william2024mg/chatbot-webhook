@@ -33,21 +33,35 @@ function extraerJWT(req) {
 }
 
 function autorizarWebhook(req, res, next) {
-  // 1) Permitir si viene desde Dialogflow con el header compartido
+  // 0) Si es el webhook y el body tiene formato de Dialogflow, DEJAR PASAR SIN TOKEN
+  // (esto habilita que al escribir "inicio" en Dialogflow arranque tu diagnóstico)
+  if (
+    req.method === 'POST' &&
+    (req.originalUrl.startsWith('/webhook') || req.path === '/webhook') &&
+    req.body && req.body.queryResult
+  ) {
+    return next();
+  }
+
+  // 1) Si viene con secret compartido (opcional)
   const header = req.get('x-shared-secret');
   if (header === WEBHOOK_SECRET) return next();
 
-  // 2) Permitir si trae un JWT válido (desde el navegador del alumno)
-  const token = extraerJWT(req);
-  if (!token) return res.status(403).send('Forbidden (falta token o secret)');
-
-  try {
-    req.user = jwt.verify(token, SECRET_JWT);
-    return next();
-  } catch (e) {
-    return res.status(403).send('Forbidden (token inválido)');
+  // 2) Si viene con JWT (alumnos desde el navegador)
+  const t = extraerJWT(req);
+  if (t) {
+    try {
+      req.user = jwt.verify(t, SECRET_JWT);
+      return next();
+    } catch {
+      return res.status(403).send('Forbidden (token inválido)');
+    }
   }
+
+  // 3) Si no trae nada, bloquear
+  return res.status(403).send('Forbidden (falta token o secret)');
 }
+
 
 
 // =================== CONTROL DE ACCESO ===================
