@@ -128,9 +128,62 @@ app.get('/admin/genera-token', (req, res) => {
   return res.json({ token, aviso: 'Agrega este token al objeto tokensValidos del servidor.' });
 });
 
+// === ADMIN: Alta de alumno (genera token + usuario/clave) ===
+// Protegido con header: x-admin-secret: <ADMIN_SECRET>
+app.post('/admin/alta-alumno', (req, res) => {
+  // Seguridad básica de admin
+  const adminHeader = req.get('x-admin-secret');
+  if (adminHeader !== ADMIN_SECRET) {
+    return res.status(403).json({ ok: false, error: 'Forbidden: admin secret inválido' });
+  }
+
+  // Datos de entrada
+  const { user, pass, nombre, grado } = req.body || {};
+
+  // Validaciones simples
+  if (!user || !pass || !nombre || !grado) {
+    return res.status(400).json({
+      ok: false,
+      error: "Faltan campos. Envia { user, pass, nombre, grado }"
+    });
+  }
+  if (usuariosPermitidos[user]) {
+    return res.status(409).json({ ok: false, error: "Ese usuario ya existe" });
+  }
+
+  // Generar token estilo /admin/genera-token
+  const suf = crypto.randomBytes(3).toString('hex');
+  const tokenGen = `sc-${(grado||'').toLowerCase()}-${(nombre||'').toLowerCase()}-${suf}`;
+
+  // Registrar en memoria
+  tokensValidos[tokenGen] = { alumno: nombre, grado };
+  usuariosPermitidos[user] = { password: pass, token: tokenGen };
+
+  // Devolver enlaces listos para usar
+  const base = `${req.protocol}://${req.get('host')}`;
+  const linkAccesoDirecto = `${base}/a/${tokenGen}`;
+  const linkAccesoLogin   = `${base}/?user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`;
+
+  return res.json({
+    ok: true,
+    alumno: nombre,
+    grado,
+    user,
+    pass,
+    token: tokenGen,
+    accesos: {
+      directo_con_token: linkAccesoDirecto,
+      via_usuario_password: linkAccesoLogin
+    },
+    nota: "Comparte uno de los 2 links con el alumno. Al entrar verá el chat; escribirá 'inicio' y seguirá todo el diagnóstico."
+  });
+});
+
+
 // =================== WEBHOOK DE DIALOGFLOW ===================
 // =================== WEBHOOK DE DIALOGFLOW ===================
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'SC-2024-CHAT';
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'SC-ADMIN-DEV';
 
 // Permite: 1) x-shared-secret (Dialogflow)  o  2) JWT (alumno navegador)
 app.use('/webhook', autorizarWebhook);
