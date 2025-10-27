@@ -487,25 +487,7 @@ app.post('/webhook', (req, res) => {
   return res.json({ fulfillmentMessages, fulfillmentText });
 });
 
-// Ruta de acceso directo con token
-app.get("/a/:token", (req, res) => {
-  const token = req.params.token;
-  // Aquí podrías validar el token en tu BD o lista de alumnos
-  res.send(`
-    <html>
-      <head><title>Chat Alumno</title></head>
-      <body>
-        <h2>Bienvenido al Chat de Diagnóstico</h2>
-        <p>Token: ${token}</p>
-        <div id="chat"></div>
-        <script>
-          // Lógica mínima para abrir el chat y mandar mensajes
-          alert("Escribe 'inicio' para comenzar tu diagnóstico.");
-        </script>
-      </body>
-    </html>
-  `);
-});
+
 
 // Ruta de login con usuario y pass
 app.get("/", (req, res) => {
@@ -553,6 +535,75 @@ app.post('/auth/login', (req, res) => {
 app.get('/auth/me', autorizarWebhook, (req, res) => {
   return res.json({ ok: true, user: req.user || null });
 });
+
+
+// ----------------- Generar PDF con resultados por sesión -----------------
+const PDFDocument = require('pdfkit'); // <- REQUIERE: npm i pdfkit
+const fs = require('fs');
+
+app.get('/report', autorizarWebhook, (req, res) => {
+  // requerimos que el usuario venga con JWT (autorizarWebhook ya lo verifica)
+  const user = req.user;
+  if (!user) return res.status(403).send('Acceso denegado');
+
+  const sid = user.sid || user.token || null;
+  if (!sid || !sesiones[sid]) return res.status(404).send('Sesión no encontrada');
+
+  const ses = sesiones[sid];
+  const datos = ses.datos || {};
+  const resultados = (datos && datos.resultados) || {};
+
+  // Nombre seguro para archivo
+  const nombre = (datos.nombre || sid).toString().replace(/[^\w\-\. ]+/g, '');
+  const filename = `reporte_${nombre}_${Date.now()}.pdf`;
+
+  // Cabeceras para descarga
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+  // Crear PDF y transmitir al cliente
+  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  doc.pipe(res);
+
+  // --- Contenido del PDF ---
+  doc.fontSize(18).text('Informe de Diagnóstico - Chatbot', { align: 'center' });
+  doc.moveDown();
+
+  doc.fontSize(12).text(`Nombre: ${datos.nombre || 'No registrado'}`);
+  doc.text(`Edad: ${datos.edad || 'No registrado'}`);
+  doc.text(`Teléfono apoderado: ${datos.celular || 'No registrado'}`);
+  doc.text(`ID de sesión: ${sid}`);
+  doc.moveDown();
+
+  doc.fontSize(14).text('Resultados por evaluación:', { underline: true });
+  doc.moveDown(0.5);
+
+  function printResult(titulo, obj) {
+    doc.fontSize(12).text(`${titulo}`);
+    if (!obj || typeof obj.total === 'undefined') {
+      doc.fontSize(11).fillColor('gray').text('  No realizado o datos no guardados.');
+    } else {
+      doc.fontSize(11).fillColor('black').text(`  Puntaje: ${obj.total}`);
+      doc.text(`  Interpretación: ${obj.nivel}`);
+    }
+    doc.moveDown(0.5);
+  }
+
+  printResult('1) Depresión (CDI Kovacs):', resultados.depresion);
+  printResult('2) Ansiedad (SCARED):', resultados.ansiedad);
+  printResult('3) Estrés académico (SISCO):', resultados.estres);
+  printResult('4) Autoestima (Rosenberg):', resultados.autoestima);
+
+  doc.moveDown();
+  doc.fontSize(10).fillColor('gray')
+     .text('Este informe es un resumen automatizado generado por el chatbot. El diagnóstico definitivo debe ser realizado por un especialista.', { align: 'left' });
+
+  // Finalizar PDF
+  doc.end();
+});
+
+
+
 
 // Levantar servidor (un solo listen)
 app.listen(PORT, () => {
