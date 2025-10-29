@@ -332,76 +332,118 @@ mensajes.push("📄 Se está generando tu reporte de salud mental para ser revis
 mensajes.push("✅ Puedes cerrar la conversación o escribir *inicio* si deseas volver a empezar.");
 estado.paso = 'completado';
 
-// === GENERAR PDF AUTOMÁTICO ===
-const nombre = estado.datos.nombre.replace(/\s+/g, '_');
-const pdfPath = path.join(__dirname, 'public', `reporte_${nombre}.pdf`);
+// ===========================================================
+// 🧩 GENERADOR DE REPORTE PDF CON FUENTE ARIAL UNICODE MS
+// ===========================================================
+const fs = require('fs');
+const PDFDocument = require('pdfkit');
 
-// Asegurar carpeta /public
+// Asegurar carpeta pública
 if (!fs.existsSync(path.join(__dirname, 'public'))) {
   fs.mkdirSync(path.join(__dirname, 'public'));
 }
 
-const doc = new PDFDocument({
-  size: 'A4',
-  margin: 50
-});
-const stream = fs.createWriteStream(pdfPath);
-doc.pipe(stream);
+// Endpoint para generar reporte PDF
+app.post('/generar-pdf', (req, res) => {
+  const datos = req.body;
 
-// Cargar fuente personalizada (para caracteres con acentos)
-doc.registerFont('Roboto', path.join(__dirname, 'fonts', 'Roboto-Regular.ttf'));
+  // Crear documento PDF
+  const doc = new PDFDocument({
+    size: 'A4',
+    margin: 50
+  });
 
-// === ENCABEZADO ===
-doc.font('Roboto').fontSize(18).fillColor('#1a237e')
-  .text('📄 REPORTE DE SALUD MENTAL DEL ESTUDIANTE', { align: 'center' });
+  // Ruta del archivo
+  const fileName = `reporte_${datos.nombre}.pdf`;
+  const filePath = path.join(__dirname, 'public', fileName);
+  const stream = fs.createWriteStream(filePath);
+  doc.pipe(stream);
 
-doc.moveDown(1.5);
-doc.fontSize(12).fillColor('#000000')
-  .text(`👤 Nombre: ${estado.datos.nombre}`, { align: 'left' })
-  .text(`🎂 Edad: ${estado.datos.edad}`, { align: 'left' })
-  .text(`📞 Apoderado: ${estado.datos.celular}`, { align: 'left' });
+  // Registrar tus fuentes personalizadas
+  doc.registerFont('ArialUnicode', path.join(__dirname, 'fonts', 'arial unicode ms.otf'));
+  doc.registerFont('ArialUnicode-Bold', path.join(__dirname, 'fonts', 'arial unicode ms bold.otf'));
 
-doc.moveDown(1);
+  // ================== ENCABEZADO ==================
+  doc
+    .font('ArialUnicode-Bold')
+    .fontSize(20)
+    .fillColor('#1a237e')
+    .text('📘 REPORTE DE SALUD MENTAL DEL ESTUDIANTE', { align: 'center' })
+    .moveDown(1.5);
 
-// === RESULTADOS ===
-doc.fontSize(14).fillColor('#1565c0')
-  .text('🧠 Resultados de Evaluación:', { underline: true });
-doc.moveDown(0.8);
-doc.fontSize(12).fillColor('#000000');
+  // ================== DATOS PERSONALES ==================
+  doc
+    .font('ArialUnicode-Bold')
+    .fontSize(14)
+    .fillColor('#000')
+    .text('👤 Nombre: ', { continued: true })
+    .font('ArialUnicode')
+    .text(datos.nombre || '—');
 
-if (estado.datos.depresion) {
-  doc.text(`• Depresión Infantil (Kovacs): ${estado.datos.depresion.total} puntos (${estado.datos.depresion.nivel})`);
-}
-if (estado.datos.ansiedad) {
-  doc.text(`• Ansiedad Infantil (SCARED): ${estado.datos.ansiedad.total} puntos (${estado.datos.ansiedad.nivel})`);
-}
-if (estado.datos.estres) {
-  doc.text(`• Estrés Académico (SISCO): ${estado.datos.estres.total} puntos (${estado.datos.estres.nivel})`);
-}
+  doc
+    .font('ArialUnicode-Bold')
+    .text('🎂 Edad: ', { continued: true })
+    .font('ArialUnicode')
+    .text(datos.edad || '—');
 
-// Autoestima
-const totalAutoestima = estado.respuestas.reduce((a, b) => a + b, 0);
-const nivelAutoestima = interpretarAutoestima(totalAutoestima);
-doc.text(`• Autoestima (Rosenberg): ${totalAutoestima} puntos (${nivelAutoestima})`);
+  doc
+    .font('ArialUnicode-Bold')
+    .text('📞 Apoderado: ', { continued: true })
+    .font('ArialUnicode')
+    .text(datos.apoderado || '—')
+    .moveDown(1);
 
-doc.moveDown(1.5);
-doc.fontSize(12).fillColor('#000000').text('📝 Gracias por completar los cuestionarios.', { align: 'center' });
-doc.text('Este informe será revisado por un especialista.', { align: 'center' });
+  // ================== RESULTADOS ==================
+  doc
+    .font('ArialUnicode-Bold')
+    .fontSize(15)
+    .fillColor('#1a237e')
+    .text('📊 Resultados de Evaluación:')
+    .moveDown(0.8);
 
-doc.moveDown(1.5);
-doc.fontSize(10).fillColor('#666666')
-  .text(`Fecha de generación: ${new Date().toLocaleDateString('es-PE')}`, { align: 'right' });
+  const resultados = [
+    { titulo: 'Depresión Infantil (Kovacs)', valor: datos.depresion, nivel: datos.nivelDepresion },
+    { titulo: 'Ansiedad Infantil (SCARED)', valor: datos.ansiedad, nivel: datos.nivelAnsiedad },
+    { titulo: 'Estrés Académico (SISCO)', valor: datos.estres, nivel: datos.nivelEstres },
+    { titulo: 'Autoestima (Rosenberg)', valor: datos.autoestima, nivel: datos.nivelAutoestima }
+  ];
 
-doc.end();
+  resultados.forEach(item => {
+    if (item.valor !== undefined) {
+      doc
+        .font('ArialUnicode')
+        .fontSize(13)
+        .fillColor('#000')
+        .text(`• ${item.titulo}: ${item.valor} puntos (${item.nivel})`, { indent: 20 });
+    }
+  });
 
-// Esperar a que se guarde y enviar link
-stream.on('finish', () => {
-  const link = `https://chatbot-webhook-chij.onrender.com/reportes/reporte_${nombre}.pdf`;
-  mensajes.push(`📄 Tu reporte está listo:\n${link}`);
-  res.json({
-    fulfillmentMessages: mensajes.map(text => ({ text: { text: [text] } }))
+  doc.moveDown(1.5);
+
+  // ================== PIE DE PÁGINA ==================
+  doc
+    .font('ArialUnicode-Bold')
+    .fontSize(13)
+    .fillColor('#1a237e')
+    .text('🩺 Gracias por completar los cuestionarios.', { align: 'center' })
+    .moveDown(0.3)
+    .font('ArialUnicode')
+    .fillColor('#000')
+    .text('Este informe será revisado por un especialista en salud mental.', { align: 'center' });
+
+  // Finalizar PDF
+  doc.end();
+
+  // Cuando termine, responder al cliente
+  stream.on('finish', () => {
+    res.json({
+      exito: true,
+      mensaje: 'PDF generado correctamente',
+      url: `${req.protocol}://${req.get('host')}/reportes/${fileName}`
+    });
   });
 });
+
 return;
 
 
