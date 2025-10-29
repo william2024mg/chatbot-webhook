@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Diagnóstico de Salud Mental</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0b1324; --card:#111a33; --ink:#e9eefc; --muted:#9fb2e3; --accent:#4f7cff;}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial;background:var(--bg);color:var(--ink)}
+    .wrap{max-width:880px;margin:32px auto;padding:0 16px}
+    .card{background:var(--card);border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden}
+    header{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:12px}
+    header h1{font-size:18px;margin:0} header .tag{color:var(--muted);font-size:13px}
+    .content{display:grid;grid-template-columns:1.3fr .7fr;gap:16px;padding:16px}
+    @media (max-width:900px){.content{grid-template-columns:1fr}}
+    .chat{display:flex;flex-direction:column;height:70vh;min-height:520px}
+    .msgs{flex:1;overflow:auto;padding:12px}
+    .msg{margin:8px 0;max-width:92%;line-height:1.4}
+    .me{background:#0e234b;border:1px solid rgba(255,255,255,.08);padding:10px 12px;border-radius:14px 14px 0 14px;align-self:flex-end}
+    .bot{background:#0b1c3d;border:1px solid rgba(255,255,255,.08);padding:10px 12px;border-radius:14px 14px 14px 0;align-self:flex-start}
+    .inputbar{display:flex;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding:12px}
+    input[type=text]{flex:1;background:#0e1a36;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px;color:var(--ink);outline:none}
+    button{background:var(--accent);color:white;border:0;border-radius:12px;padding:12px 16px;font-weight:600;cursor:pointer}
+    .side{display:flex;flex-direction:column;gap:12px}
+    .box{background:#0e1a36;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px}
+    .box h3{margin:0 0 8px 0;font-size:14px;color:var(--muted)}
+    .small{font-size:13px;color:var(--muted)}
+    .row{display:flex;gap:8px}
+    .row input{flex:1}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <header>
+        <h1>Diagnóstico de Salud Mental</h1>
+        <span class="tag">Seguro con token o usuario/clave</span>
+      </header>
+      <div class="content">
+        <section class="chat">
+          <div id="msgs" class="msgs"></div>
+          <div class="inputbar">
+            <input id="q" type="text" placeholder="Escribe tu respuesta… (ej. inicio)" />
+            <button id="send">Enviar</button>
+          </div>
+        </section>
+
+        <aside class="side">
+          <div class="box">
+            <h3>Acceso rápido</h3>
+            <div class="small">Si entraste con <b>/a/&lt;token&gt;</b>, ya estás autenticado.</div>
+            <div class="row" style="margin-top:8px">
+              <input id="tokenInput" type="text" placeholder="Pegar token (sc-...)" />
+              <button id="goToken">Ir</button>
+            </div>
+          </div>
+
+          <div class="box">
+            <h3>Login (usuario/clave)</h3>
+            <div class="row"><input id="user" placeholder="usuario" /></div>
+            <div class="row"><input id="pass" placeholder="contraseña" type="password" /></div>
+            <div class="row"><button id="loginBtn">Entrar</button></div>
+            <div class="small">Crea usuarios en <code>usuariosPermitidos</code> del servidor.</div>
+          </div>
+
+          <div class="box">
+            <h3>Estado</h3>
+            <div id="status" class="small">Sin sesión</div>
+          </div>
+
+          <div class="box">
+            <h3>Atajos</h3>
+            <div class="row">
+              <button id="bInicio">inicio</button>
+              <button id="bSi">sí</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
