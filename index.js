@@ -341,66 +341,50 @@ if (!fs.existsSync(path.join(__dirname, 'public'))) {
   fs.mkdirSync(path.join(__dirname, 'public'));
 }
 
-const doc = new PDFDocument({ margin: 50 });
+const doc = new PDFDocument();
 const stream = fs.createWriteStream(pdfPath);
 doc.pipe(stream);
 
-// ================= CABECERA =================
-doc
-  .fontSize(18)
-  .fillColor('#1a237e')
-  .text('INSTITUCIÓN EDUCATIVA PRIVADA SAN CRISTÓBAL DE HUAMANGA', { align: 'center' })
-  .moveDown(0.5)
-  .fontSize(14)
-  .fillColor('#004d40')
-  .text('🧠 YachayWasiBot — Evaluación de Salud Mental', { align: 'center' })
-  .moveDown(1.5);
+doc.fontSize(18).text('Reporte de Salud Mental', { align: 'center' });
+doc.moveDown();
+doc.fontSize(12).text(`👤 Nombre: ${estado.datos.nombre}`);
+doc.text(`🎂 Edad: ${estado.datos.edad}`);
+doc.text(`📞 Apoderado: ${estado.datos.celular}`);
+doc.moveDown();
 
-// ================= DATOS PERSONALES =================
-doc
-  .fontSize(12)
-  .fillColor('#000')
-  .text(`👤 Nombre del estudiante: ${estado.datos.nombre}`)
-  .text(`🎂 Edad: ${estado.datos.edad}`)
-  .text(`📞 Apoderado: ${estado.datos.celular}`)
-  .moveDown();
+// === Resultados de los 4 cuestionarios ===
+doc.fontSize(14).text('Resultados por cuestionario:', { underline: true });
+doc.moveDown(0.5);
 
-// ================= RESULTADOS =================
-const puntajeTotal = estado.respuestas.reduce((a, b) => a + b, 0);
-const nivel = interpretarAutoestima(puntajeTotal);
+// DEPRESIÓN
+if (estado.resultados && estado.resultados.depresion) {
+  const dep = estado.resultados.depresion;
+  doc.fontSize(12).text(`🧠 Depresión: ${dep.puntaje} puntos (${interpretarDepresion(dep.puntaje)})`);
+}
 
-doc
-  .fontSize(13)
-  .fillColor('#1a237e')
-  .text('📊 Resultados del Cuestionario de Autoestima (Rosenberg):')
-  .moveDown(0.5);
+// ANSIEDAD
+if (estado.resultados && estado.resultados.ansiedad) {
+  const ans = estado.resultados.ansiedad;
+  doc.fontSize(12).text(`😟 Ansiedad: ${ans.puntaje} puntos (${interpretarAnsiedad(ans.puntaje)})`);
+}
 
-doc
-  .fontSize(12)
-  .fillColor('#000')
-  .text(`Puntaje total obtenido: ${puntajeTotal}`)
-  .text(`Nivel de autoestima: ${nivel}`)
-  .moveDown(1.5);
+// ESTRÉS ACADÉMICO
+if (estado.resultados && estado.resultados.estres) {
+  const est = estado.resultados.estres;
+  doc.fontSize(12).text(`📚 Estrés Académico: ${est.puntaje} puntos (${interpretarEstres(est.puntaje)})`);
+}
 
-// ================= PIE DE PÁGINA =================
-doc
-  .fontSize(12)
-  .fillColor('#1a237e')
-  .text('🩺 Gracias por completar los cuestionarios.', { align: 'center' })
-  .moveDown(0.3)
-  .fillColor('#000')
-  .text(
-    'Este reporte será revisado por el especialista en salud mental de la institución.',
-    { align: 'center' }
-  )
-  .moveDown(0.5)
-  .fontSize(10)
-  .fillColor('#555')
-  .text('© 2024 YachayWasiBot — I.E.P. San Cristóbal de Huamanga', { align: 'center' });
+// AUTOESTIMA
+if (estado.resultados && estado.resultados.autoestima) {
+  const aut = estado.resultados.autoestima;
+  doc.fontSize(12).text(`💪 Autoestima: ${aut.puntaje} puntos (${interpretarAutoestima(aut.puntaje)})`);
+}
 
+doc.moveDown();
+doc.text('Gracias por completar los cuestionarios.', { align: 'center' });
 doc.end();
 
-// ================= ENLACE DE DESCARGA =================
+// Esperar a que se guarde y enviar link
 stream.on('finish', () => {
   const link = `https://chatbot-webhook-chij.onrender.com/reportes/reporte_${nombre}.pdf`;
   mensajes.push(`📄 Tu reporte está listo:\n${link}`);
@@ -410,7 +394,6 @@ stream.on('finish', () => {
 });
 
 return; // Evita enviar respuesta antes de generar PDF
-
 
 
       
