@@ -232,6 +232,8 @@ mensajes.push(`PRIMERA PREGUNTA:\n${preguntasKovacs[0]}\n(Responde con un númer
       mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
       mensajes.push(`📊 Puntaje total: *${total}*`);
       mensajes.push(`🔎 Nivel de depresión: *${nivel}*`);
+      estado.datos.depresion = { total, nivel };
+
       mensajes.push("¿Deseas continuar con el bloque de ansiedad? (sí / no)");
       estado.paso = 'fin_depresion_kovacs';
     }
@@ -261,6 +263,8 @@ else if (estado.paso === 'ansiedad_scared' && (esGenerico || intent === 'captura
       mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
       mensajes.push(`📊 Puntaje total: *${total}*`);
       mensajes.push(`🔎 Nivel de ansiedad: *${nivel}*`);
+      estado.datos.ansiedad = { total, nivel };
+
       mensajes.push("¿Deseas continuar con el siguiente bloque? (sí / no)");
       estado.paso = 'fin_ansiedad_scared';
     }
@@ -289,6 +293,8 @@ else if (estado.paso === 'inicio_estres' && (esGenerico || intent === 'captura_t
       mensajes.push(`📞 Apoderado: ${estado.datos.celular}`);
       mensajes.push(`📊 Puntaje total: *${total}*`);
       mensajes.push(`🔎 Nivel de estrés académico: *${nivel}*`);
+      estado.datos.estres = { total, nivel };
+
       mensajes.push("¿Deseas continuar con el siguiente bloque? (sí / no)");
       estado.paso = 'fin_estres';
     }
@@ -339,16 +345,37 @@ const doc = new PDFDocument();
 const stream = fs.createWriteStream(pdfPath);
 doc.pipe(stream);
 
-doc.fontSize(18).text('Reporte de Salud Mental', { align: 'center' });
+// ======== ENCABEZADO ========
+doc.fontSize(18).text('📄 Reporte de Salud Mental del Estudiante', { align: 'center' });
 doc.moveDown();
 doc.fontSize(12).text(`👤 Nombre: ${estado.datos.nombre}`);
 doc.text(`🎂 Edad: ${estado.datos.edad}`);
 doc.text(`📞 Apoderado: ${estado.datos.celular}`);
 doc.moveDown();
-doc.text(`Autoestima total: ${estado.respuestas.reduce((a,b)=>a+b,0)}`);
-doc.text(`Nivel: ${interpretarAutoestima(estado.respuestas.reduce((a,b)=>a+b,0))}`);
+
+// ======== RESULTADOS ========
+doc.fontSize(14).text('🧠 Resultados de Evaluación:', { underline: true });
+doc.moveDown(0.5);
+
+if (estado.datos.depresion) {
+  doc.fontSize(12).text(`• Depresión Infantil (Kovacs): ${estado.datos.depresion.total} puntos (${estado.datos.depresion.nivel})`);
+}
+if (estado.datos.ansiedad) {
+  doc.fontSize(12).text(`• Ansiedad Infantil (SCARED): ${estado.datos.ansiedad.total} puntos (${estado.datos.ansiedad.nivel})`);
+}
+if (estado.datos.estres) {
+  doc.fontSize(12).text(`• Estrés Académico (SISCO): ${estado.datos.estres.total} puntos (${estado.datos.estres.nivel})`);
+}
+
+// Autoestima actual
+const totalAutoestima = estado.respuestas.reduce((a, b) => a + b, 0);
+const nivelAutoestima = interpretarAutoestima(totalAutoestima);
+doc.fontSize(12).text(`• Autoestima (Rosenberg): ${totalAutoestima} puntos (${nivelAutoestima})`);
+
 doc.moveDown();
-doc.text('Gracias por completar los cuestionarios.', { align: 'center' });
+doc.text('📝 Gracias por completar los cuestionarios.', { align: 'center' });
+doc.text('Este informe será revisado por un especialista.', { align: 'center' });
+
 doc.end();
 
 // Esperar a que se guarde y enviar link
@@ -360,7 +387,7 @@ stream.on('finish', () => {
   });
 });
 
-return; // Evita enviar respuesta antes de generar PDF
+return;
 
       
     }
