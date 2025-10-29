@@ -341,40 +341,56 @@ if (!fs.existsSync(path.join(__dirname, 'public'))) {
   fs.mkdirSync(path.join(__dirname, 'public'));
 }
 
-const doc = new PDFDocument();
+const doc = new PDFDocument({
+  size: 'A4',
+  margin: 50
+});
 const stream = fs.createWriteStream(pdfPath);
 doc.pipe(stream);
 
-// ======== ENCABEZADO ========
-doc.fontSize(18).text('📄 Reporte de Salud Mental del Estudiante', { align: 'center' });
-doc.moveDown();
-doc.fontSize(12).text(`👤 Nombre: ${estado.datos.nombre}`);
-doc.text(`🎂 Edad: ${estado.datos.edad}`);
-doc.text(`📞 Apoderado: ${estado.datos.celular}`);
-doc.moveDown();
+// Cargar fuente personalizada (para caracteres con acentos)
+doc.registerFont('Roboto', path.join(__dirname, 'fonts', 'Roboto-Regular.ttf'));
 
-// ======== RESULTADOS ========
-doc.fontSize(14).text('🧠 Resultados de Evaluación:', { underline: true });
-doc.moveDown(0.5);
+// === ENCABEZADO ===
+doc.font('Roboto').fontSize(18).fillColor('#1a237e')
+  .text('📄 REPORTE DE SALUD MENTAL DEL ESTUDIANTE', { align: 'center' });
+
+doc.moveDown(1.5);
+doc.fontSize(12).fillColor('#000000')
+  .text(`👤 Nombre: ${estado.datos.nombre}`, { align: 'left' })
+  .text(`🎂 Edad: ${estado.datos.edad}`, { align: 'left' })
+  .text(`📞 Apoderado: ${estado.datos.celular}`, { align: 'left' });
+
+doc.moveDown(1);
+
+// === RESULTADOS ===
+doc.fontSize(14).fillColor('#1565c0')
+  .text('🧠 Resultados de Evaluación:', { underline: true });
+doc.moveDown(0.8);
+doc.fontSize(12).fillColor('#000000');
 
 if (estado.datos.depresion) {
-  doc.fontSize(12).text(`• Depresión Infantil (Kovacs): ${estado.datos.depresion.total} puntos (${estado.datos.depresion.nivel})`);
+  doc.text(`• Depresión Infantil (Kovacs): ${estado.datos.depresion.total} puntos (${estado.datos.depresion.nivel})`);
 }
 if (estado.datos.ansiedad) {
-  doc.fontSize(12).text(`• Ansiedad Infantil (SCARED): ${estado.datos.ansiedad.total} puntos (${estado.datos.ansiedad.nivel})`);
+  doc.text(`• Ansiedad Infantil (SCARED): ${estado.datos.ansiedad.total} puntos (${estado.datos.ansiedad.nivel})`);
 }
 if (estado.datos.estres) {
-  doc.fontSize(12).text(`• Estrés Académico (SISCO): ${estado.datos.estres.total} puntos (${estado.datos.estres.nivel})`);
+  doc.text(`• Estrés Académico (SISCO): ${estado.datos.estres.total} puntos (${estado.datos.estres.nivel})`);
 }
 
-// Autoestima actual
+// Autoestima
 const totalAutoestima = estado.respuestas.reduce((a, b) => a + b, 0);
 const nivelAutoestima = interpretarAutoestima(totalAutoestima);
-doc.fontSize(12).text(`• Autoestima (Rosenberg): ${totalAutoestima} puntos (${nivelAutoestima})`);
+doc.text(`• Autoestima (Rosenberg): ${totalAutoestima} puntos (${nivelAutoestima})`);
 
-doc.moveDown();
-doc.text('📝 Gracias por completar los cuestionarios.', { align: 'center' });
+doc.moveDown(1.5);
+doc.fontSize(12).fillColor('#000000').text('📝 Gracias por completar los cuestionarios.', { align: 'center' });
 doc.text('Este informe será revisado por un especialista.', { align: 'center' });
+
+doc.moveDown(1.5);
+doc.fontSize(10).fillColor('#666666')
+  .text(`Fecha de generación: ${new Date().toLocaleDateString('es-PE')}`, { align: 'right' });
 
 doc.end();
 
@@ -386,8 +402,8 @@ stream.on('finish', () => {
     fulfillmentMessages: mensajes.map(text => ({ text: { text: [text] } }))
   });
 });
-
 return;
+
 
       
     }
