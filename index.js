@@ -1,6 +1,10 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 
+const fs = require('fs');
+const path = require('path');
+const PDFDocument = require('pdfkit');
+
 const app = express();
 const port = process.env.PORT || 10000;
 
@@ -322,6 +326,43 @@ mensajes.push("📄 Se está generando tu reporte de salud mental para ser revis
 mensajes.push("✅ Puedes cerrar la conversación o escribir *inicio* si deseas volver a empezar.");
 estado.paso = 'completado';
 
+// === GENERAR PDF AUTOMÁTICO ===
+const nombre = estado.datos.nombre.replace(/\s+/g, '_');
+const pdfPath = path.join(__dirname, 'public', `reporte_${nombre}.pdf`);
+
+// Asegurar carpeta /public
+if (!fs.existsSync(path.join(__dirname, 'public'))) {
+  fs.mkdirSync(path.join(__dirname, 'public'));
+}
+
+const doc = new PDFDocument();
+const stream = fs.createWriteStream(pdfPath);
+doc.pipe(stream);
+
+doc.fontSize(18).text('Reporte de Salud Mental', { align: 'center' });
+doc.moveDown();
+doc.fontSize(12).text(`👤 Nombre: ${estado.datos.nombre}`);
+doc.text(`🎂 Edad: ${estado.datos.edad}`);
+doc.text(`📞 Apoderado: ${estado.datos.celular}`);
+doc.moveDown();
+doc.text(`Autoestima total: ${estado.respuestas.reduce((a,b)=>a+b,0)}`);
+doc.text(`Nivel: ${interpretarAutoestima(estado.respuestas.reduce((a,b)=>a+b,0))}`);
+doc.moveDown();
+doc.text('Gracias por completar los cuestionarios.', { align: 'center' });
+doc.end();
+
+// Esperar a que se guarde y enviar link
+stream.on('finish', () => {
+  const link = `https://chatbot-webhook-chij.onrender.com/reportes/reporte_${nombre}.pdf`;
+  mensajes.push(`📄 Tu reporte está listo:\n${link}`);
+  res.json({
+    fulfillmentMessages: mensajes.map(text => ({ text: { text: [text] } }))
+  });
+});
+
+return; // Evita enviar respuesta antes de generar PDF
+
+      
     }
   }
 }
@@ -365,6 +406,8 @@ else {
     fulfillmentMessages: mensajes.map(text => ({ text: { text: [text] } }))
   });
 });
+
+app.use('/reportes', express.static(path.join(__dirname, 'public')));
 
 app.listen(port, () => {
   console.log(`🚀 Servidor corriendo en el puerto ${port}`);
