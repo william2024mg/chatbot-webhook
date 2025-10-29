@@ -341,23 +341,66 @@ if (!fs.existsSync(path.join(__dirname, 'public'))) {
   fs.mkdirSync(path.join(__dirname, 'public'));
 }
 
-const doc = new PDFDocument();
+const doc = new PDFDocument({ margin: 50 });
 const stream = fs.createWriteStream(pdfPath);
 doc.pipe(stream);
 
-doc.fontSize(18).text('Reporte de Salud Mental', { align: 'center' });
-doc.moveDown();
-doc.fontSize(12).text(`👤 Nombre: ${estado.datos.nombre}`);
-doc.text(`🎂 Edad: ${estado.datos.edad}`);
-doc.text(`📞 Apoderado: ${estado.datos.celular}`);
-doc.moveDown();
-doc.text(`Autoestima total: ${estado.respuestas.reduce((a,b)=>a+b,0)}`);
-doc.text(`Nivel: ${interpretarAutoestima(estado.respuestas.reduce((a,b)=>a+b,0))}`);
-doc.moveDown();
-doc.text('Gracias por completar los cuestionarios.', { align: 'center' });
+// ================= CABECERA =================
+doc
+  .fontSize(18)
+  .fillColor('#1a237e')
+  .text('INSTITUCIÓN EDUCATIVA PRIVADA SAN CRISTÓBAL DE HUAMANGA', { align: 'center' })
+  .moveDown(0.5)
+  .fontSize(14)
+  .fillColor('#004d40')
+  .text('🧠 YachayWasiBot — Evaluación de Salud Mental', { align: 'center' })
+  .moveDown(1.5);
+
+// ================= DATOS PERSONALES =================
+doc
+  .fontSize(12)
+  .fillColor('#000')
+  .text(`👤 Nombre del estudiante: ${estado.datos.nombre}`)
+  .text(`🎂 Edad: ${estado.datos.edad}`)
+  .text(`📞 Apoderado: ${estado.datos.celular}`)
+  .moveDown();
+
+// ================= RESULTADOS =================
+const puntajeTotal = estado.respuestas.reduce((a, b) => a + b, 0);
+const nivel = interpretarAutoestima(puntajeTotal);
+
+doc
+  .fontSize(13)
+  .fillColor('#1a237e')
+  .text('📊 Resultados del Cuestionario de Autoestima (Rosenberg):')
+  .moveDown(0.5);
+
+doc
+  .fontSize(12)
+  .fillColor('#000')
+  .text(`Puntaje total obtenido: ${puntajeTotal}`)
+  .text(`Nivel de autoestima: ${nivel}`)
+  .moveDown(1.5);
+
+// ================= PIE DE PÁGINA =================
+doc
+  .fontSize(12)
+  .fillColor('#1a237e')
+  .text('🩺 Gracias por completar los cuestionarios.', { align: 'center' })
+  .moveDown(0.3)
+  .fillColor('#000')
+  .text(
+    'Este reporte será revisado por el especialista en salud mental de la institución.',
+    { align: 'center' }
+  )
+  .moveDown(0.5)
+  .fontSize(10)
+  .fillColor('#555')
+  .text('© 2024 YachayWasiBot — I.E.P. San Cristóbal de Huamanga', { align: 'center' });
+
 doc.end();
 
-// Esperar a que se guarde y enviar link
+// ================= ENLACE DE DESCARGA =================
 stream.on('finish', () => {
   const link = `https://chatbot-webhook-chij.onrender.com/reportes/reporte_${nombre}.pdf`;
   mensajes.push(`📄 Tu reporte está listo:\n${link}`);
@@ -367,6 +410,7 @@ stream.on('finish', () => {
 });
 
 return; // Evita enviar respuesta antes de generar PDF
+
 
 
       
