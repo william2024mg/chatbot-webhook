@@ -332,6 +332,7 @@ mensajes.push("📄 Se está generando tu reporte de salud mental para ser revis
 mensajes.push("✅ Puedes cerrar la conversación o escribir *inicio* si deseas volver a empezar.");
 estado.paso = 'completado';
 
+      
 // === GENERAR PDF AUTOMÁTICO ===
 const nombre = estado.datos.nombre.replace(/\s+/g, '_');
 const pdfPath = path.join(__dirname, 'public', `reporte_${nombre}.pdf`);
@@ -345,46 +346,46 @@ const doc = new PDFDocument();
 const stream = fs.createWriteStream(pdfPath);
 doc.pipe(stream);
 
-doc.fontSize(18).text('Reporte de Salud Mental', { align: 'center' });
+// === ENCABEZADO ===
+doc.fontSize(18).text('📘 Reporte de Salud Mental', { align: 'center' });
 doc.moveDown();
 doc.fontSize(12).text(`👤 Nombre: ${estado.datos.nombre}`);
 doc.text(`🎂 Edad: ${estado.datos.edad}`);
 doc.text(`📞 Apoderado: ${estado.datos.celular}`);
 doc.moveDown();
 
-// === Resultados de los 4 cuestionarios ===
-doc.fontSize(14).text('Resultados por cuestionario:', { underline: true });
+// === RESULTADOS ===
+doc.fontSize(14).text('🧠 Resultados de los cuestionarios:', { underline: true });
 doc.moveDown(0.5);
 
-// DEPRESIÓN
-if (estado.resultados && estado.resultados.depresion) {
-  const dep = estado.resultados.depresion;
-  doc.fontSize(12).text(`🧠 Depresión: ${dep.puntaje} puntos (${interpretarDepresion(dep.puntaje)})`);
-}
-
-// ANSIEDAD
-if (estado.resultados && estado.resultados.ansiedad) {
-  const ans = estado.resultados.ansiedad;
-  doc.fontSize(12).text(`😟 Ansiedad: ${ans.puntaje} puntos (${interpretarAnsiedad(ans.puntaje)})`);
-}
-
-// ESTRÉS ACADÉMICO
-if (estado.resultados && estado.resultados.estres) {
-  const est = estado.resultados.estres;
-  doc.fontSize(12).text(`📚 Estrés Académico: ${est.puntaje} puntos (${interpretarEstres(est.puntaje)})`);
-}
-
-// AUTOESTIMA
-if (estado.resultados && estado.resultados.autoestima) {
-  const aut = estado.resultados.autoestima;
-  doc.fontSize(12).text(`💪 Autoestima: ${aut.puntaje} puntos (${interpretarAutoestima(aut.puntaje)})`);
-}
-
+// 1️⃣ AUTOESTIMA - Rosenberg
+const puntajeAutoestima = estado.resultados.autoestima;
+doc.fontSize(12).text(`Autoestima (Rosenberg): ${puntajeAutoestima}`);
+doc.text(`Nivel: ${interpretarAutoestima(puntajeAutoestima)}`);
 doc.moveDown();
+
+// 2️⃣ DEPRESIÓN - CDI Kovacs
+const puntajeDepresion = estado.resultados.depresion;
+doc.text(`Depresión (CDI Kovacs): ${puntajeDepresion}`);
+doc.text(`Nivel: ${interpretarDepresion(puntajeDepresion)}`);
+doc.moveDown();
+
+// 3️⃣ ANSIEDAD - SCARED
+const puntajeAnsiedad = estado.resultados.ansiedad;
+doc.text(`Ansiedad (SCARED): ${puntajeAnsiedad}`);
+doc.text(`Nivel: ${interpretarAnsiedad(puntajeAnsiedad)}`);
+doc.moveDown();
+
+// 4️⃣ ESTRÉS ACADÉMICO - SISCO
+const puntajeEstres = estado.resultados.estres;
+doc.text(`Estrés académico (SISCO): ${puntajeEstres}`);
+doc.text(`Nivel: ${interpretarEstres(puntajeEstres)}`);
+doc.moveDown(2);
+
 doc.text('Gracias por completar los cuestionarios.', { align: 'center' });
 doc.end();
 
-// Esperar a que se guarde y enviar link
+// === GUARDAR Y ENVIAR LINK ===
 stream.on('finish', () => {
   const link = `https://chatbot-webhook-chij.onrender.com/reportes/reporte_${nombre}.pdf`;
   mensajes.push(`📄 Tu reporte está listo:\n${link}`);
@@ -394,6 +395,7 @@ stream.on('finish', () => {
 });
 
 return; // Evita enviar respuesta antes de generar PDF
+
 
 
       
