@@ -332,116 +332,41 @@ mensajes.push("📄 Se está generando tu reporte de salud mental para ser revis
 mensajes.push("✅ Puedes cerrar la conversación o escribir *inicio* si deseas volver a empezar.");
 estado.paso = 'completado';
 
-// ===========================================================
-// 🧩 GENERADOR DE REPORTE PDF SIN CONFLICTOS DE FUENTE
-// ===========================================================
-const fs = require('fs');
-const path = require('path');
-const PDFDocument = require('pdfkit');
+// === GENERAR PDF AUTOMÁTICO ===
+const nombre = estado.datos.nombre.replace(/\s+/g, '_');
+const pdfPath = path.join(__dirname, 'public', `reporte_${nombre}.pdf`);
 
-// Asegurar carpeta pública
+// Asegurar carpeta /public
 if (!fs.existsSync(path.join(__dirname, 'public'))) {
   fs.mkdirSync(path.join(__dirname, 'public'));
 }
 
-// Endpoint para generar reporte PDF
-app.post('/generar-pdf', (req, res) => {
-  const datos = req.body;
+const doc = new PDFDocument();
+const stream = fs.createWriteStream(pdfPath);
+doc.pipe(stream);
 
-  // Crear documento PDF
-  const doc = new PDFDocument({
-    size: 'A4',
-    margin: 50
-  });
+doc.fontSize(18).text('Reporte de Salud Mental', { align: 'center' });
+doc.moveDown();
+doc.fontSize(12).text(`👤 Nombre: ${estado.datos.nombre}`);
+doc.text(`🎂 Edad: ${estado.datos.edad}`);
+doc.text(`📞 Apoderado: ${estado.datos.celular}`);
+doc.moveDown();
+doc.text(`Autoestima total: ${estado.respuestas.reduce((a,b)=>a+b,0)}`);
+doc.text(`Nivel: ${interpretarAutoestima(estado.respuestas.reduce((a,b)=>a+b,0))}`);
+doc.moveDown();
+doc.text('Gracias por completar los cuestionarios.', { align: 'center' });
+doc.end();
 
-  // Ruta del archivo
-  const fileName = `reporte_${datos.nombre}.pdf`;
-  const filePath = path.join(__dirname, 'public', fileName);
-  const stream = fs.createWriteStream(filePath);
-  doc.pipe(stream);
-
-  // Usar fuente estándar (Helvetica) — estable y sin errores
-  doc.font('Helvetica-Bold')
-    .fontSize(18)
-    .fillColor('#1a237e')
-    .text('REPORTE DE SALUD MENTAL DEL ESTUDIANTE', { align: 'center' })
-    .moveDown(1.5);
-
-  // ================== DATOS PERSONALES ==================
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(13)
-    .fillColor('#000')
-    .text('Nombre: ', { continued: true })
-    .font('Helvetica')
-    .text(datos.nombre || '—');
-
-  doc
-    .font('Helvetica-Bold')
-    .text('Edad: ', { continued: true })
-    .font('Helvetica')
-    .text(datos.edad || '—');
-
-  doc
-    .font('Helvetica-Bold')
-    .text('Apoderado: ', { continued: true })
-    .font('Helvetica')
-    .text(datos.apoderado || '—')
-    .moveDown(1);
-
-  // ================== RESULTADOS ==================
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(14)
-    .fillColor('#1a237e')
-    .text('Resultados de Evaluación:')
-    .moveDown(0.8);
-
-  const resultados = [
-    { titulo: 'Depresión Infantil (Kovacs)', valor: datos.depresion, nivel: datos.nivelDepresion },
-    { titulo: 'Ansiedad Infantil (SCARED)', valor: datos.ansiedad, nivel: datos.nivelAnsiedad },
-    { titulo: 'Estrés Académico (SISCO)', valor: datos.estres, nivel: datos.nivelEstres },
-    { titulo: 'Autoestima (Rosenberg)', valor: datos.autoestima, nivel: datos.nivelAutoestima }
-  ];
-
-  resultados.forEach(item => {
-    if (item.valor !== undefined) {
-      doc
-        .font('Helvetica')
-        .fontSize(12)
-        .fillColor('#000')
-        .text(`• ${item.titulo}: ${item.valor} puntos (${item.nivel})`, { indent: 20 });
-    }
-  });
-
-  doc.moveDown(1.5);
-
-  // ================== PIE DE PÁGINA ==================
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(12)
-    .fillColor('#1a237e')
-    .text('Gracias por completar los cuestionarios.', { align: 'center' })
-    .moveDown(0.3)
-    .font('Helvetica')
-    .fillColor('#000')
-    .text('Este informe será revisado por un especialista en salud mental.', { align: 'center' });
-
-  // Finalizar PDF
-  doc.end();
-
-  // Cuando termine, responder al cliente
-  stream.on('finish', () => {
-    res.json({
-      exito: true,
-      mensaje: 'PDF generado correctamente',
-      url: `${req.protocol}://${req.get('host')}/reportes/${fileName}`
-    });
+// Esperar a que se guarde y enviar link
+stream.on('finish', () => {
+  const link = `https://chatbot-webhook-chij.onrender.com/reportes/reporte_${nombre}.pdf`;
+  mensajes.push(`📄 Tu reporte está listo:\n${link}`);
+  res.json({
+    fulfillmentMessages: mensajes.map(text => ({ text: { text: [text] } }))
   });
 });
 
-
-return;
+return; // Evita enviar respuesta antes de generar PDF
 
 
       
