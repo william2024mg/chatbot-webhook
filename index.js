@@ -356,32 +356,45 @@ doc.moveDown();
 
 // === RESULTADOS ===
 doc.fontSize(14).text('🧠 Resultados de los cuestionarios:', { underline: true });
-doc.moveDown(0.5);
+doc.moveDown(0.8);
 
-// 1️⃣ AUTOESTIMA - Rosenberg
-const puntajeAutoestima = estado.resultados.autoestima;
-doc.fontSize(12).text(`Autoestima (Rosenberg): ${puntajeAutoestima}`);
-doc.text(`Nivel: ${interpretarAutoestima(puntajeAutoestima)}`);
+// 1️⃣ DEPRESIÓN - CDI Kovacs
+if (estado.datos.depresion) {
+  doc.fontSize(12).text(`Depresión (CDI Kovacs): ${estado.datos.depresion.total}`);
+  doc.text(`Nivel: ${estado.datos.depresion.nivel}`);
+  doc.moveDown();
+}
+
+// 2️⃣ ANSIEDAD - SCARED
+if (estado.datos.ansiedad) {
+  doc.text(`Ansiedad Infantil (SCARED): ${estado.datos.ansiedad.total}`);
+  doc.text(`Nivel: ${estado.datos.ansiedad.nivel}`);
+  doc.moveDown();
+}
+
+// 3️⃣ ESTRÉS ACADÉMICO - SISCO
+if (estado.datos.estres) {
+  doc.text(`Estrés académico (SISCO): ${estado.datos.estres.total}`);
+  doc.text(`Nivel: ${estado.datos.estres.nivel}`);
+  doc.moveDown();
+}
+
+// 4️⃣ AUTOESTIMA - Rosenberg
+if (estado.datos.autoestima) {
+  doc.text(`Autoestima (Rosenberg): ${estado.datos.autoestima.total}`);
+  doc.text(`Nivel: ${estado.datos.autoestima.nivel}`);
+  doc.moveDown();
+} else {
+  // Si no guardaste el resultado aún, lo hace aquí:
+  const total = estado.respuestas.reduce((a, b) => a + b, 0);
+  const nivel = interpretarAutoestima(total);
+  estado.datos.autoestima = { total, nivel };
+  doc.text(`Autoestima (Rosenberg): ${total}`);
+  doc.text(`Nivel: ${nivel}`);
+  doc.moveDown();
+}
+
 doc.moveDown();
-
-// 2️⃣ DEPRESIÓN - CDI Kovacs
-const puntajeDepresion = estado.resultados.depresion;
-doc.text(`Depresión (CDI Kovacs): ${puntajeDepresion}`);
-doc.text(`Nivel: ${interpretarDepresion(puntajeDepresion)}`);
-doc.moveDown();
-
-// 3️⃣ ANSIEDAD - SCARED
-const puntajeAnsiedad = estado.resultados.ansiedad;
-doc.text(`Ansiedad (SCARED): ${puntajeAnsiedad}`);
-doc.text(`Nivel: ${interpretarAnsiedad(puntajeAnsiedad)}`);
-doc.moveDown();
-
-// 4️⃣ ESTRÉS ACADÉMICO - SISCO
-const puntajeEstres = estado.resultados.estres;
-doc.text(`Estrés académico (SISCO): ${puntajeEstres}`);
-doc.text(`Nivel: ${interpretarEstres(puntajeEstres)}`);
-doc.moveDown(2);
-
 doc.text('Gracias por completar los cuestionarios.', { align: 'center' });
 doc.end();
 
@@ -395,6 +408,7 @@ stream.on('finish', () => {
 });
 
 return; // Evita enviar respuesta antes de generar PDF
+
 
 
 
