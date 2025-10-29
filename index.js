@@ -333,9 +333,10 @@ mensajes.push("✅ Puedes cerrar la conversación o escribir *inicio* si deseas 
 estado.paso = 'completado';
 
 // ===========================================================
-// 🧩 GENERADOR DE REPORTE PDF CON FUENTE ARIAL UNICODE MS
+// 🧩 GENERADOR DE REPORTE PDF SIN CONFLICTOS DE FUENTE
 // ===========================================================
 const fs = require('fs');
+const path = require('path');
 const PDFDocument = require('pdfkit');
 
 // Asegurar carpeta pública
@@ -359,46 +360,41 @@ app.post('/generar-pdf', (req, res) => {
   const stream = fs.createWriteStream(filePath);
   doc.pipe(stream);
 
-  // Registrar tus fuentes personalizadas
-  doc.registerFont('ArialUnicode', path.join(__dirname, 'fonts', 'arial unicode ms.otf'));
-  doc.registerFont('ArialUnicode-Bold', path.join(__dirname, 'fonts', 'arial unicode ms bold.otf'));
-
-  // ================== ENCABEZADO ==================
-  doc
-    .font('ArialUnicode-Bold')
-    .fontSize(20)
+  // Usar fuente estándar (Helvetica) — estable y sin errores
+  doc.font('Helvetica-Bold')
+    .fontSize(18)
     .fillColor('#1a237e')
-    .text('📘 REPORTE DE SALUD MENTAL DEL ESTUDIANTE', { align: 'center' })
+    .text('REPORTE DE SALUD MENTAL DEL ESTUDIANTE', { align: 'center' })
     .moveDown(1.5);
 
   // ================== DATOS PERSONALES ==================
   doc
-    .font('ArialUnicode-Bold')
-    .fontSize(14)
+    .font('Helvetica-Bold')
+    .fontSize(13)
     .fillColor('#000')
-    .text('👤 Nombre: ', { continued: true })
-    .font('ArialUnicode')
+    .text('Nombre: ', { continued: true })
+    .font('Helvetica')
     .text(datos.nombre || '—');
 
   doc
-    .font('ArialUnicode-Bold')
-    .text('🎂 Edad: ', { continued: true })
-    .font('ArialUnicode')
+    .font('Helvetica-Bold')
+    .text('Edad: ', { continued: true })
+    .font('Helvetica')
     .text(datos.edad || '—');
 
   doc
-    .font('ArialUnicode-Bold')
-    .text('📞 Apoderado: ', { continued: true })
-    .font('ArialUnicode')
+    .font('Helvetica-Bold')
+    .text('Apoderado: ', { continued: true })
+    .font('Helvetica')
     .text(datos.apoderado || '—')
     .moveDown(1);
 
   // ================== RESULTADOS ==================
   doc
-    .font('ArialUnicode-Bold')
-    .fontSize(15)
+    .font('Helvetica-Bold')
+    .fontSize(14)
     .fillColor('#1a237e')
-    .text('📊 Resultados de Evaluación:')
+    .text('Resultados de Evaluación:')
     .moveDown(0.8);
 
   const resultados = [
@@ -411,8 +407,8 @@ app.post('/generar-pdf', (req, res) => {
   resultados.forEach(item => {
     if (item.valor !== undefined) {
       doc
-        .font('ArialUnicode')
-        .fontSize(13)
+        .font('Helvetica')
+        .fontSize(12)
         .fillColor('#000')
         .text(`• ${item.titulo}: ${item.valor} puntos (${item.nivel})`, { indent: 20 });
     }
@@ -422,12 +418,12 @@ app.post('/generar-pdf', (req, res) => {
 
   // ================== PIE DE PÁGINA ==================
   doc
-    .font('ArialUnicode-Bold')
-    .fontSize(13)
+    .font('Helvetica-Bold')
+    .fontSize(12)
     .fillColor('#1a237e')
-    .text('🩺 Gracias por completar los cuestionarios.', { align: 'center' })
+    .text('Gracias por completar los cuestionarios.', { align: 'center' })
     .moveDown(0.3)
-    .font('ArialUnicode')
+    .font('Helvetica')
     .fillColor('#000')
     .text('Este informe será revisado por un especialista en salud mental.', { align: 'center' });
 
@@ -443,6 +439,7 @@ app.post('/generar-pdf', (req, res) => {
     });
   });
 });
+
 
 return;
 
